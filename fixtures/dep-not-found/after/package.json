@@ -1,0 +1,12 @@
+{
+  "name": "loja-demo",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "react-form-validatorz": "^2.1.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.0"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "sourceMap": true,
+    "composite": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  }
+}

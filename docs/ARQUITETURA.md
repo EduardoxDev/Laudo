@@ -1,0 +1,272 @@
+# Laudo — Arquitetura
+
+> Versão 0.1 · 26/10/2026 · Acompanha a [Especificação do MVP](./ESPECIFICACAO.md)
+
+## 1. Visão geral
+
+```
+                ┌──────────────┐     ┌──────────────┐
+  terminal ───▶ │  @laudo/cli  │     │ laudo-action │ ◀─── GitHub (pull_request)
+                └──────┬───────┘     └──────┬───────┘
+                       └────────┬───────────┘
+                                ▼
+                      ┌───────────────────┐
+                      │    @laudo/core    │
+                      │                   │
+                      │ 1. Coleta         │  git diff, arquivos antes/depois, package.json
+                      │ 2. Análise        │  analisadores em paralelo
+                      │ 3. Veredito       │  regras → aprovado / revisar / bloqueado
+                      │ 4. Relatório      │  terminal · markdown · json · sarif
+                      └─────────┬─────────┘
+                                │ usa (sempre por interface)
+              ┌─────────────────┼──────────────────┐
+              ▼                 ▼                  ▼
+          Git (local)   Registro npm (HTTP)   Stryker (subprocesso)
+```
+
+O núcleo é uma **função pura no meio**: recebe um `ChangeSet` (o diff com o conteúdo antes e depois) e devolve um `Report`. Tudo o que toca o mundo externo (git, rede, processos) fica atrás de interfaces. Isso deixa os analisadores fáceis de testar com fixtures e impede que a rede afete o resultado sem aviso.
+
+## 2. Estrutura do repositório
+
+Monorepo com npm workspaces (o pnpm não está instalado na máquina; dá para trocar depois sem mudar o código):
+
+```
+laudo/
+├─ packages/
+│  ├─ core/                 # @laudo/core: pipeline, tipos, analisadores, renderizadores
+│  │  └─ src/
+│  │     ├─ collect/        # git.ts, changeset.ts, manifest.ts
+│  │     ├─ analyzers/
+│  │     │  ├─ test-integrity/   # parse.ts, rules/*.ts
+│  │     │  ├─ deps/             # registry.ts, typosquat.ts, rules.ts
+│  │     │  ├─ risk-map/         # zones.ts, trivial.ts
+│  │     │  └─ mutation/         # ranges.ts, stryker.ts
+│  │     ├─ verdict.ts
+│  │     ├─ render/         # terminal.ts, markdown.ts, json.ts, sarif.ts
+│  │     ├─ config.ts       # carrega e valida laudo.config.json (zod)
+│  │     └─ index.ts        # runLaudo(options): Promise<Report>
+│  ├─ cli/                  # @laudo/cli → binário `laudo` (check, init, explain)
+│  └─ action/               # GitHub Action (bundle único em dist/)
+├─ fixtures/                # corpo de PRs: _shared/ (base comum), <caso>/before|after/ e cases.json (veredito e regras esperadas)
+├─ bench/                   # roda o Laudo em PRs reais e mede precisão e tempo
+└─ docs/
+```
+
+## 3. Tecnologias
+
+| Para quê | Escolha | Por quê |
+|---|---|---|
+| Linguagem | TypeScript, Node ≥ 20.19 | O público alvo é JS/TS; `npx` sem instalar nada |
+| Build | `tsc -b` (project references); tsup entra na fatia 4 | `tsc` basta para a CLI; o bundle único só é preciso na Action |
+| AST | `@babel/parser` (plugins `typescript`, `jsx`) | Lê TS, JSX e JS com tolerância a erro |
+| Diff | `git` via `child_process` + parser próprio de `-U0` | Usa o git que já existe; sem dependência extra |
+| Nomes parecidos | Distância de edição própria + `npm-high-impact` | Determinístico; a lista vem pronta e atualizada pelo autor |
+| Versões | `semver` | O mesmo resolvedor que o npm usa |
+| Mutação | Stryker JS (subprocesso) | Aceita intervalos de linha (`arquivo.ts:10-24`), modo incremental, Vitest/Jest/Mocha |
+| Config | `zod` | Erros de config claros, com o caminho do campo |
+| CLI | `commander` + `picocolors` | Leve |
+| Action | `@actions/core`, `@actions/github` | Padrão do GitHub |
+| Testes | Vitest + testes de fixture (snapshot do `Report`) | Cada regra nova vem com seu fixture |
+
+Regra das duas semanas: só versões publicadas há pelo menos 14 dias, fixadas sem `^`. Na fatia 1 a instalação foi feita com `npm install --before=2026-10-12`, que aplica a regra também às dependências indiretas. Babel 7 e Commander 14 foram escolhidos em vez de Babel 8 e Commander 15 porque estes exigem Node 22.
+
+## 4. Modelo de dados
+
+```ts
+type Level = 'pass' | 'review' | 'block';
+
+interface ChangeSet {
+  base: string;               // sha
+  head: string;               // sha
+  files: ChangedFile[];
+  manifests: { before: PackageJson | null; after: PackageJson | null; path: string }[];
+}
+
+interface ChangedFile {
+  path: string;
+  oldPath?: string;           // renomeado
+  status: 'added' | 'modified' | 'deleted' | 'renamed';
+  kind: 'test' | 'source' | 'config' | 'ci' | 'snapshot' | 'other';
+  before: string | null;      // conteúdo completo
+  after: string | null;
+  hunks: Hunk[];              // linhas alteradas, com números antes/depois
+}
+
+interface Finding {
+  id: string;                 // estável: hash(regra + arquivo + trecho) → mesmo achado entre pushes
+  rule: string;               // ex.: 'tests/assertion-removed'
+  level: Level;
+  title: string;              // frase curta, em português
+  file?: string;
+  line?: number;
+  evidence?: { before?: string; after?: string };
+  hint?: string;              // como resolver
+}
+
+interface Analyzer {
+  name: string;
+  appliesTo(cs: ChangeSet): boolean;
+  run(cs: ChangeSet, ctx: Context): Promise<Finding[]>;
+}
+
+interface Context {
+  config: Config;
+  registry: RegistryClient;   // interface → falso nos testes
+  runner: ProcessRunner;      // interface → falso nos testes
+  cache: Cache;
+  signal: AbortSignal;        // limite de tempo
+  log: Logger;
+}
+
+interface Report {
+  verdict: Level;
+  findings: Finding[];
+  reviewPlan: { file: string; lines: number; reason: string }[];
+  trivial: { file: string; lines: number; why: 'rename' | 'format' | 'imports' }[];
+  mutation?: { killed: number; survived: number; timedOut: boolean };
+  meta: { version: string; durationMs: number; analyzers: Record<string, 'ok' | 'skipped' | 'error'> };
+}
+```
+
+## 5. Pipeline
+
+### 5.1 Coleta (`collect/`)
+
+1. `git merge-base <base> HEAD` → sha da base.
+2. `git diff --find-renames -U0 <base>...HEAD` → hunks.
+3. Para cada arquivo: `git show <sha>:<path>` antes e depois (com limite de tamanho; arquivos binários são pulados).
+4. Classifica cada arquivo (`kind`) pelos padrões da config e por convenções (`*.test.*`, `__tests__/`, `.github/workflows/`, `__snapshots__/`).
+5. Lê os `package.json` antes e depois (incluindo os de workspaces).
+
+### 5.2 Análise
+
+Os analisadores rodam em paralelo (`Promise.allSettled`). **Se um falha, o laudo continua**: ele é marcado como `error` no `meta`, e o veredito nunca fica pior por causa da falha. A mutação roda por último e só se `--mutate` estiver ligado.
+
+#### `test-integrity`
+
+- Faz o parse do antes e do depois de cada arquivo `kind: test`.
+- Extrai uma **lista de testes**: caminho `describe > it`, modificadores (`skip`/`only`/`todo`), número de asserts (`expect(...)`, `assert.*`, `t.is`...) e as expressões de cada assert normalizadas.
+- Pareia os testes por nome (e por similaridade de corpo quando o nome mudou).
+- Cada regra é uma função pequena `(parAntes, parDepois) => Finding[]`, que fica em `rules/`.
+- Arquivos `kind: ci` e `config` (vitest/jest config, `package.json` scripts) passam por regras próprias: limite de cobertura, `continue-on-error`, `|| true`, `--passWithNoTests`, job de teste removido.
+
+#### `deps`
+
+- Diferença entre `dependencies`, `devDependencies` e `optionalDependencies` antes e depois.
+- Para cada pacote novo, em até 3 consultas:
+  1. `GET registry.npmjs.org/<nome>` com `Accept: application/vnd.npm.install-v1+json` (metadados resumidos: versões, dist-tags e `hasInstallScript` de cada versão). Pacote popular conhecido para aqui.
+  2. `GET api.npmjs.org/downloads/point/last-week/<nome>` (só no registro público).
+  3. Só se tiver menos de 10 mil downloads por semana: o documento completo, para ler `time.created`. Os documentos completos de pacotes grandes têm vários MB, por isso essa etapa é evitada.
+- Versão: `semver.maxSatisfying` sobre as versões publicadas; se o valor não for um range, ele é tratado como dist-tag (`next`, `beta`).
+- Nome parecido: distância de edição com troca de vizinhas (Damerau/OSA) contra os 5 mil pacotes mais baixados do [npm-high-impact](https://github.com/wooorm/npm-high-impact). O limite é 1 para nomes de 5 a 8 letras e 2 a partir de 9; também conta igualdade ignorando `-`, `_` e `.`, e escopo trocado (`@bable/` → `@babel/`). Pacotes da lista completa (~17 mil) nunca são suspeitos.
+- Cache em JSON (24 h; 1 h para pacote inexistente), gravado num temporário e renomeado. O local é `%LOCALAPPDATA%\laudo\cache` no Windows e `$XDG_CACHE_HOME/laudo` ou `~/.cache/laudo` nos outros sistemas, ou `LAUDO_CACHE_DIR`. Sem rede, o resultado vira **Revisar** (`deps/registry-unavailable`).
+- Pacotes do próprio repositório (campo `name` de todo `package.json` rastreado pelo git) são pulados. Assim um monorepo não acusa os próprios pacotes como inexistentes.
+
+#### `risk-map`
+
+Os analisadores devolvem `{ findings, reviewPlan?, trivial? }`; só o `risk-map` preenche os dois últimos.
+
+- **Zonas** (`zones.ts`): 6 zonas embutidas mais `risk.sensitive` da config. Cada zona tem uma regex de caminho, que casa com palavra inteira (`auth.ts` sim, `author.ts` não), e outra de conteúdo, aplicada só às linhas que o diff tirou ou colocou. Testes e snapshots não contam. Um achado `risk/sensitive-zone` (Revisar) por zona, listando os arquivos.
+- **Trivial** (`trivial.ts`), do mais barato para o mais caro:
+  1. Lockfile → `generated`; conteúdo idêntico e renomeado → `moved`.
+  2. Fora de JS/TS: igual sem espaços → `format`.
+  3. AST serializado sem posições, comentários, `extra` (forma original de literais, parênteses) → igual = `format`.
+  4. O mesmo, trocando os nomes **locais** por `$1, $2…` na ordem em que aparecem → igual = `rename`. Ficam de fora os nomes exportados, as propriedades (`a.b`, `{ b: 1 }`), as chaves de desestruturação e os nomes importados/exportados, porque trocar qualquer um deles muda o comportamento.
+  5. Mesmo código fora dos imports, e o mesmo conjunto de imports em outra ordem → `imports`.
+  Na dúvida (erro de sintaxe, arquivo pulado), não é trivial.
+- **Plano**: zonas sensíveis → tipo (código, CI, config, teste, outro, snapshot) → tamanho → nome.
+
+#### `mutation`
+
+1. Junta os hunks dos arquivos `kind: source` em intervalos (`src/cart.ts:12-30`).
+2. Escreve uma config temporária do Stryker com `mutate` = esses intervalos e `incremental: true` (arquivo guardado em `.laudo/stryker-incremental.json`, reaproveitado entre execuções no CI via cache).
+3. Roda `npx stryker run` como subprocesso, com `AbortSignal` ligado ao limite de tempo.
+4. Lê o relatório JSON do Stryker → mutantes sobreviventes viram `Finding`s com o trecho mutado como evidência.
+5. Detecta o executor de testes (vitest/jest/mocha) pelo `package.json`. Se não encontrar, o analisador é pulado com aviso.
+
+### 5.3 Veredito (`verdict.ts`)
+
+```
+se algum achado é 'block'   → block
+senão se algum é 'review'   → review
+senão                       → pass
+```
+
+O `failOn` da config decide qual nível faz o código de saída falhar o CI. Supressões (`// laudo-ignore <regra>: <motivo>`) só valem com motivo escrito e aparecem listadas no relatório. Nada é escondido em silêncio.
+
+### 5.4 Relatório (`render/`)
+
+Cada renderizador é uma função pura `Report → string`. O markdown segue o modelo da Especificação (seção 7) e termina com um marcador invisível `<!-- laudo:report -->`, que a Action usa para achar e atualizar o próprio comentário.
+
+Regras do markdown, porque tudo o que vem do diff é controlado por quem abriu o PR:
+- Texto comum passa por `text()`: primeiro escapa o markdown (`` \ ` * _ [ ] | ~ # ``), depois o HTML (`& < >`) e o `@`, que vira `&#64;` para não mencionar pessoas nem times (`@org/time`). A ordem importa: escapar `#` depois criaria `&\#64;`.
+- Nomes e trechos vão em código (`code()` e `fence()`), com mais crases que a maior sequência do conteúdo, para que ele não feche o bloco antes da hora.
+- Limite padrão de 60 mil caracteres (o GitHub aceita 65.536): o resumo, as listas e o marcador entram sempre; as evidências entram até onde couber, e o resto é indicado.
+- O JSON leva `schemaVersion: 1`, que muda quando o formato quebrar quem lê.
+
+## 6. CLI
+
+```
+laudo check [--base <ref>] [--mutate] [--format terminal|markdown|json|sarif] [--fail-on block|review|never]
+laudo init                   # cria laudo.config.json e .github/workflows/laudo.yml
+laudo explain <regra>        # explica uma regra, com exemplo de antes e depois
+```
+
+## 7. GitHub Action
+
+Fluxo com dois workflows, para ser seguro em PRs de forks:
+
+```
+pull_request (sem segredos, token só leitura)
+  └─ job "analisar": checkout com fetch-depth 0 → laudo check --format json → upload do artefato laudo.json
+
+workflow_run (quando "analisar" termina; tem permissão de escrita)
+  └─ job "comentar": baixa laudo.json → renderiza markdown → cria ou atualiza o comentário marcado
+                     → publica SARIF → define o status do check
+```
+
+- O job que **executa o código do PR** (testes e mutação rodam código do PR) **nunca** tem segredos nem token de escrita.
+- O job que **escreve no PR** nunca faz checkout nem executa código do PR; ele só lê o JSON (validado com zod antes de usar).
+- Para repositórios sem forks, há um modo simples num único job (`mode: single`).
+
+## 8. Segurança e privacidade
+
+- Nenhum código é enviado para fora. As únicas chamadas de rede são ao registro do npm, e só com **nomes de pacote**.
+- Os textos que vêm do PR (nomes de arquivo, trechos) são escapados no markdown para evitar injeção no comentário.
+- O resumo com IA (versão futura) é opcional, usa a chave da própria pessoa e envia apenas o `Report`, não o código.
+- A pipeline do próprio Laudo roda o Laudo nos seus PRs.
+
+## 9. Desempenho
+
+| Etapa | Meta (diff de ~500 linhas) |
+|---|---|
+| Coleta | < 1 s |
+| test-integrity + risk-map | < 3 s (parse só dos arquivos alterados) |
+| deps | < 2 s com cache; consultas em paralelo (máx. 8) |
+| mutation | ≤ limite configurado (padrão 300 s), incremental |
+
+## 10. Testes
+
+- **Unitários** por regra: um par mínimo antes/depois → achados esperados.
+- **Fixtures** (`fixtures/<caso>/`): cada caso é um mini-repositório git montado no teste (`antes/` → commit, `depois/` → commit). Roda o `runLaudo` e compara com `expected.json`.
+- **Contrato** do registro: respostas gravadas do npm, para não depender da rede no CI.
+- **Bench** (`bench/`): lista de PRs públicos (limpos e feitos por agentes) → mede precisão, falsos positivos e tempo. O resultado vai para o README.
+
+## 11. Ordem de construção
+
+| Fatia | Entrega | Demo |
+|---|---|---|
+| 1 | Coleta + `test-integrity` (assert removido, skip/only, corpo vazio, tautologia) + saída no terminal | `npx laudo check` pega um assert apagado |
+| 2 | `deps` com cache e nomes parecidos | Bloqueia `lodahs` |
+| 3 | `risk-map` + renderizadores markdown e JSON | "Revise estas 46 linhas" |
+| 4 | GitHub Action com comentário único e SARIF | PR de exemplo barrado em repositório público |
+| 5 | `mutation` com Stryker | "Trocar `>` por `>=` não quebra nenhum teste" |
+| 6 | Regras de CI/config + bench + README com GIF | Lançamento v0.1 |
+
+Cada fatia termina com testes passando, fixture novo e o README atualizado.
+
+## 12. Decisões em aberto
+
+1. **Licença:** MIT (mais adoção) ou Apache-2.0 (proteção de patente). Sugestão: MIT.
+2. **Nome no npm:** `laudo`, `laudo-cli` e `@laudo/cli` estavam livres em 26/10/2026. Vale registrar a organização `@laudo` logo.
+3. **Idioma:** relatório em português e inglês desde a v0.1? Sugestão: inglês por padrão (alcance) e `--lang pt-BR`.

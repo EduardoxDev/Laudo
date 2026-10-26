@@ -1,0 +1,16 @@
+{
+  "name": "loja-demo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "dependencies": {
+    "@demo/shared": "1.0.0",
+    "@demo/ui": "workspace:*",
+    "dayjs": "^1.11.0",
+    "lodash-latest": "npm:lodash@^4.17.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.0"
+  }
+}

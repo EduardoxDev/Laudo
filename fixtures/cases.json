@@ -1,0 +1,108 @@
+{
+  "$comment": "Cada caso parte de _shared/ (mais <caso>/before/, se houver), vira o commit da base, recebe <caso>/after/ por cima (menos os arquivos de 'delete') e vira o commit do head. 'rules' é o conjunto exato de regras esperadas; 'trivial' (opcional) é o mapa exato arquivo → motivo; 'planFirst' (opcional) é o primeiro arquivo do plano de revisão.",
+  "risk-payments": {
+    "description": "Arquivo novo em src/payments e src/cart.ts só reformatado: o pagamento vai para o topo e a formatação some do plano.",
+    "verdict": "review",
+    "rules": ["risk/sensitive-zone"],
+    "trivial": { "src/cart.ts": "format" },
+    "planFirst": "src/payments/refund.ts"
+  },
+  "risk-secret-in-code": {
+    "description": "Código comum que passou a ler um segredo do ambiente: a zona vem do conteúdo, não do caminho.",
+    "verdict": "review",
+    "rules": ["risk/sensitive-zone"],
+    "planFirst": "src/cart.ts"
+  },
+  "trivial-only": {
+    "description": "Só renomeação de variáveis locais e troca da ordem dos imports: nada para revisar.",
+    "verdict": "pass",
+    "rules": [],
+    "trivial": { "src/cart.ts": "rename", "test/cart.test.ts": "imports" }
+  },
+  "assertion-removed": {
+    "description": "O agente apagou o expect e deixou só um console.log.",
+    "verdict": "block",
+    "rules": ["tests/assertion-removed"]
+  },
+  "tautology": {
+    "description": "O expect virou expect(result).toBe(result).",
+    "verdict": "block",
+    "rules": ["tests/tautology"]
+  },
+  "only-added": {
+    "description": "Um it.only faz o resto da suíte parar de rodar.",
+    "verdict": "block",
+    "rules": ["tests/only-added"]
+  },
+  "describe-skipped": {
+    "description": "O bloco inteiro foi desligado com describe.skip.",
+    "verdict": "review",
+    "rules": ["tests/test-skipped"]
+  },
+  "body-emptied": {
+    "description": "O corpo do teste virou só um comentário.",
+    "verdict": "block",
+    "rules": ["tests/body-emptied"]
+  },
+  "expected-changed": {
+    "description": "O código ganhou um bug e o valor esperado foi ajustado para o teste passar.",
+    "verdict": "review",
+    "rules": ["tests/expected-changed"]
+  },
+  "assertion-weakened": {
+    "description": "toBe(42) virou toBeDefined().",
+    "verdict": "review",
+    "rules": ["tests/assertion-weakened"]
+  },
+  "test-file-deleted": {
+    "description": "O arquivo de teste foi apagado.",
+    "delete": ["test/cart.test.ts"],
+    "verdict": "review",
+    "rules": ["tests/file-deleted"]
+  },
+  "node-test-cheat": {
+    "description": "node:test: um teste ganhou { skip: true } e o outro virou assert.equal(x, x).",
+    "verdict": "block",
+    "rules": ["tests/tautology", "tests/test-skipped"]
+  },
+  "dep-not-found": {
+    "description": "A IA inventou um pacote que não existe no npm (slopsquatting).",
+    "verdict": "block",
+    "rules": ["deps/not-found"]
+  },
+  "dep-typosquat": {
+    "description": "lodahs: nome quase igual a lodash, publicado há 3 dias, 12 downloads.",
+    "verdict": "block",
+    "rules": ["deps/typosquat"]
+  },
+  "dep-young-install-script": {
+    "description": "Pacote de 6 dias, 41 downloads e postinstall.",
+    "verdict": "review",
+    "rules": ["deps/install-script"]
+  },
+  "dep-version-missing": {
+    "description": "dayjs ^9.0.0: a versão não existe.",
+    "verdict": "block",
+    "rules": ["deps/version-not-found"]
+  },
+  "dep-private-scope": {
+    "description": "Pacote com escopo fora do registro público: pode ser privado, então só pede revisão.",
+    "verdict": "review",
+    "rules": ["deps/not-found"]
+  },
+  "dep-clean": {
+    "description": "Dependências limpas: pacotes populares, alias npm:, pacotes do próprio monorepo e workspace:*.",
+    "verdict": "pass",
+    "rules": []
+  },
+  "clean-refactor": {
+    "description": "Refatoração limpa: aspas trocadas, assert movido para função auxiliar, teste renomeado sem mudar o corpo.",
+    "verdict": "pass",
+    "rules": []
+  },
+  "clean-new-tests": {
+    "description": "Código novo com testes novos e de verdade.",
+    "verdict": "pass",
+    "rules": []
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$comment": "Registro falso usado pelos fixtures. Pacote ausente daqui = não existe (404). 'now' fixa a data de hoje.",
+  "now": "2026-10-26T12:00:00Z",
+  "packages": {
+    "zod": { "versions": ["4.0.0", "4.1.0", "4.6.6"], "created": "2020-03-07T00:00:00Z", "weeklyDownloads": 30000000 },
+    "vitest": { "versions": ["4.0.0", "4.1.11"], "created": "2021-12-03T00:00:00Z", "weeklyDownloads": 20000000 },
+    "dayjs": { "versions": ["1.11.0", "1.11.13"], "created": "2018-04-25T00:00:00Z", "weeklyDownloads": 25000000 },
+    "lodash": { "versions": ["4.17.21"], "created": "2012-04-23T00:00:00Z", "weeklyDownloads": 60000000 },
+    "lodahs": { "versions": ["1.0.0"], "created": "2026-10-23T00:00:00Z", "weeklyDownloads": 12 },
+    "tiny-date-x": {
+      "versions": ["0.0.1"],
+      "installScripts": ["0.0.1"],
+      "created": "2026-10-20T00:00:00Z",
+      "weeklyDownloads": 41
+    }
+  }
+}

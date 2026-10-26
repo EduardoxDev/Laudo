@@ -1,0 +1,193 @@
+import type * as t from '@babel/types';
+import { isJsLike } from '../../collect/classify.js';
+import type { ChangedFile, TrivialWhy } from '../../types.js';
+import { parseSource } from '../../util/ast.js';
+
+type ParsedFile = ReturnType<typeof parseSource>;
+
+const GENERATED = /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|Cargo\.lock|poetry\.lock|composer\.lock)$/;
+
+/** Chaves do AST que não mudam o que o código faz: posições, comentários, forma original de literais e parênteses. */
+const NOISE = new Set([
+  'loc',
+  'start',
+  'end',
+  'range',
+  'extra',
+  'errors',
+  'tokens',
+  'comments',
+  'leadingComments',
+  'trailingComments',
+  'innerComments',
+]);
+
+/**
+ * Diz por que a mudança neste arquivo é trivial, ou `null` se ela pode mudar o comportamento.
+ * Na dúvida (arquivo que não dá para ler, erro de sintaxe), não é trivial.
+ */
+export function trivialKind(file: ChangedFile): TrivialWhy | null {
+  if (GENERATED.test(file.path)) return 'generated';
+  if (file.before === null || file.after === null) return null;
+  if (file.before === file.after) return file.status === 'renamed' ? 'moved' : 'format';
+
+  if (!isJsLike(file.path)) return squash(file.before) === squash(file.after) ? 'format' : null;
+
+  const before = tryParse(file.before, file.oldPath ?? file.path);
+  const after = tryParse(file.after, file.path);
+  if (!before || !after) return null;
+
+  if (serialize(before.program, null) === serialize(after.program, null)) return 'format';
+  if (serialize(before.program, renamer(before)) === serialize(after.program, renamer(after))) return 'rename';
+  if (sameButImportOrder(before.program, after.program)) return 'imports';
+  return null;
+}
+
+function squash(text: string): string {
+  return text.replace(/\s+/g, '');
+}
+
+function tryParse(code: string, filename: string): ParsedFile | null {
+  try {
+    const ast = parseSource(code, filename);
+    return ast.errors?.length ? null : ast;
+  } catch {
+    return null;
+  }
+}
+
+/** Troca nomes de variáveis locais por `$1`, `$2`... na ordem em que aparecem. */
+interface Renamer {
+  locals: Set<string>;
+  map: Map<string, string>;
+}
+
+function renamer(ast: t.File): Renamer {
+  const { declared, exported } = bindings(ast.program);
+  return { locals: new Set([...declared].filter((n) => !exported.has(n))), map: new Map() };
+}
+
+/** Serializa o nó sem o que é ruído; com `rename`, os nomes locais viram posições. */
+function serialize(node: unknown, rename: Renamer | null, parent?: t.Node, key?: string): string {
+  if (Array.isArray(node)) return `[${node.map((n) => serialize(n, rename, parent, key)).join(',')}]`;
+  if (node === null || typeof node !== 'object') return JSON.stringify(node ?? null);
+  const n = node as t.Node;
+
+  if (n.type === 'Identifier' && rename && rename.locals.has(n.name) && isReference(parent, key)) {
+    let alias = rename.map.get(n.name);
+    if (!alias) rename.map.set(n.name, (alias = `$${rename.map.size + 1}`));
+    return `{"Identifier":"${alias}"}`;
+  }
+
+  const parts: string[] = [];
+  for (const k of Object.keys(n).sort()) {
+    if (NOISE.has(k)) continue;
+    parts.push(`${JSON.stringify(k)}:${serialize((n as unknown as Record<string, unknown>)[k], rename, n, k)}`);
+  }
+  return `{${parts.join(',')}}`;
+}
+
+/** O identificador é um nome de variável, e não o nome de uma propriedade ou de algo importado/exportado. */
+function isReference(parent: t.Node | undefined, key: string | undefined): boolean {
+  if (!parent) return true;
+  const computed = (parent as { computed?: boolean }).computed === true;
+  switch (key) {
+    case 'property':
+      return parent.type !== 'MemberExpression' && parent.type !== 'OptionalMemberExpression' ? true : computed;
+    case 'key':
+      return computed;
+    case 'imported':
+    case 'exported':
+    case 'meta':
+    case 'label':
+      return false;
+    case 'local':
+      return parent.type !== 'ExportSpecifier';
+    default:
+      return true;
+  }
+}
+
+/** Nomes declarados no arquivo e quais deles são exportados. */
+function bindings(program: t.Program): { declared: Set<string>; exported: Set<string> } {
+  const declared = new Set<string>();
+  const exported = new Set<string>();
+
+  const pattern = (p: t.Node | null | undefined, into: Set<string>) => {
+    if (!p) return;
+    if (p.type === 'Identifier') into.add(p.name);
+    else if (p.type === 'ObjectPattern') for (const prop of p.properties) pattern(prop.type === 'RestElement' ? prop.argument : prop.value, into);
+    else if (p.type === 'ArrayPattern') for (const el of p.elements) pattern(el, into);
+    else if (p.type === 'AssignmentPattern') pattern(p.left, into);
+    else if (p.type === 'RestElement') pattern(p.argument, into);
+    else if (p.type === 'TSParameterProperty') pattern(p.parameter, into);
+  };
+
+  const declNames = (d: t.Node, into: Set<string>) => {
+    if (d.type === 'VariableDeclaration') for (const v of d.declarations) pattern(v.id, into);
+    else if ('id' in d && d.id && (d.id as t.Node).type === 'Identifier') into.add((d.id as t.Identifier).name);
+  };
+
+  const visit = (node: unknown): void => {
+    if (Array.isArray(node)) return node.forEach(visit);
+    if (node === null || typeof node !== 'object') return;
+    const n = node as t.Node;
+    switch (n.type) {
+      case 'VariableDeclarator':
+        pattern(n.id, declared);
+        break;
+      case 'FunctionDeclaration':
+      case 'FunctionExpression':
+      case 'ArrowFunctionExpression':
+      case 'ObjectMethod':
+      case 'ClassMethod':
+        if ('id' in n && n.id) declared.add(n.id.name);
+        for (const p of n.params) pattern(p, declared);
+        break;
+      case 'ClassDeclaration':
+      case 'ClassExpression':
+        if (n.id) declared.add(n.id.name);
+        break;
+      case 'CatchClause':
+        pattern(n.param, declared);
+        break;
+      case 'ImportSpecifier':
+      case 'ImportDefaultSpecifier':
+      case 'ImportNamespaceSpecifier':
+        declared.add(n.local.name);
+        break;
+      case 'ExportNamedDeclaration':
+        if (n.declaration) declNames(n.declaration, exported);
+        for (const s of n.specifiers) if (s.type === 'ExportSpecifier') exported.add(s.local.name);
+        break;
+      case 'ExportDefaultDeclaration':
+        declNames(n.declaration, exported);
+        if (n.declaration.type === 'Identifier') exported.add(n.declaration.name);
+        break;
+    }
+    for (const k of Object.keys(n)) if (!NOISE.has(k)) visit((n as unknown as Record<string, unknown>)[k]);
+  };
+
+  visit(program);
+  return { declared, exported };
+}
+
+/** O resto do arquivo é igual e os imports são os mesmos, só em outra ordem. */
+function sameButImportOrder(a: t.Program, b: t.Program): boolean {
+  const split = (p: t.Program) => {
+    const imports: string[] = [];
+    const rest: unknown[] = [];
+    for (const s of p.body) {
+      if (s.type === 'ImportDeclaration') {
+        const specifiers = s.specifiers.map((x) => serialize(x, null)).sort();
+        imports.push(`${serialize(s.source, null)}|${s.importKind ?? ''}|${specifiers.join(',')}`);
+      } else {
+        rest.push(s);
+      }
+    }
+    return { imports: imports.sort().join('\n'), rest: serialize(rest, null) };
+  };
+  const x = split(a);
+  const y = split(b);
+  return x.imports === y.imports && x.rest === y.rest;
+}

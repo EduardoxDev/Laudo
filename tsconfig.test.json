@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "noEmit": true,
+    "paths": { "@laudo/core": ["./packages/core/src/index.ts"] }
+  },
+  "include": ["packages/*/test", "vitest.config.ts"]
+}

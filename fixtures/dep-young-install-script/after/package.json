@@ -1,0 +1,12 @@
+{
+  "name": "loja-demo",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "tiny-date-x": "0.0.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.0"
+  }
+}
