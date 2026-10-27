@@ -6,3 +6,4 @@ coverage/
 # O bundle da Action precisa estar no repositório (action.yml aponta para ele).
 !packages/action/dist/
 packages/action/lib/
+bench/.cache/

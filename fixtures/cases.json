@@ -1,5 +1,30 @@
 {
   "$comment": "Cada caso parte de _shared/ (mais <caso>/before/, se houver), vira o commit da base, recebe <caso>/after/ por cima (menos os arquivos de 'delete') e vira o commit do head. 'rules' é o conjunto exato de regras esperadas; 'trivial' (opcional) é o mapa exato arquivo → motivo; 'planFirst' (opcional) é o primeiro arquivo do plano de revisão.",
+  "ci-continue-on-error": {
+    "description": "O passo de testes do CI ganhou continue-on-error: true.",
+    "verdict": "block",
+    "rules": ["ci/failure-ignored", "risk/sensitive-zone"]
+  },
+  "ci-test-step-removed": {
+    "description": "O passo `npm test` saiu do workflow.",
+    "verdict": "block",
+    "rules": ["ci/tests-not-run", "risk/sensitive-zone"]
+  },
+  "coverage-lowered": {
+    "description": "vitest.config.ts: lines 80 → 60 e branches removido.",
+    "verdict": "block",
+    "rules": ["ci/coverage-lowered"]
+  },
+  "test-script-neutered": {
+    "description": "O script test virou um echo e o lint ganhou || true.",
+    "verdict": "block",
+    "rules": ["ci/failure-ignored", "ci/tests-not-run"]
+  },
+  "ci-clean": {
+    "description": "Mudança legítima no CI (matriz de versões do Node, cache, flag no npm test): só a zona sensível pede revisão.",
+    "verdict": "review",
+    "rules": ["risk/sensitive-zone"]
+  },
   "risk-payments": {
     "description": "Arquivo novo em src/payments e src/cart.ts só reformatado: o pagamento vai para o topo e a formatação some do plano.",
     "verdict": "review",

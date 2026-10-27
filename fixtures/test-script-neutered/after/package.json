@@ -1,0 +1,15 @@
+{
+  "name": "loja-demo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "echo \"testes ok\"",
+    "lint": "eslint . || true"
+  },
+  "dependencies": {
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.0"
+  }
+}

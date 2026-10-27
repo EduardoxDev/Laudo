@@ -25,6 +25,9 @@ export const RULES = {
   'deps/low-downloads': { maxLevel: 'review', summary: 'O pacote tem poucos downloads por semana.' },
   'deps/registry-unavailable': { maxLevel: 'review', summary: 'Não deu para consultar o pacote no registro.' },
   'risk/sensitive-zone': { maxLevel: 'review', summary: 'A mudança toca uma zona sensível (login, dinheiro, banco, segredos, CI).' },
+  'ci/failure-ignored': { maxLevel: 'block', summary: 'O CI ou um script passou a ignorar falhas (|| true, continue-on-error, if: false).' },
+  'ci/tests-not-run': { maxLevel: 'block', summary: 'Um passo ou script que rodava os testes foi removido ou esvaziado.' },
+  'ci/coverage-lowered': { maxLevel: 'block', summary: 'Um limite de cobertura de testes foi reduzido, removido ou desligado.' },
   'mutation/survived': {
     maxLevel: 'block',
     summary: 'Bugs inseridos de propósito nas linhas alteradas não fazem nenhum teste falhar: os testes não provam esta mudança.',

@@ -162,6 +162,14 @@ Os analisadores rodam em paralelo (`Promise.allSettled`). **Se um falha, o laudo
 - Cache em JSON (24 h; 1 h para pacote inexistente), gravado num temporário e renomeado. O local é `%LOCALAPPDATA%\laudo\cache` no Windows e `$XDG_CACHE_HOME/laudo` ou `~/.cache/laudo` nos outros sistemas, ou `LAUDO_CACHE_DIR`. Sem rede, o resultado vira **Revisar** (`deps/registry-unavailable`).
 - Pacotes do próprio repositório (campo `name` de todo `package.json` rastreado pelo git) são pulados. Assim um monorepo não acusa os próprios pacotes como inexistentes.
 
+#### `ci-integrity`
+
+Pega o agente que deixa o CI verde mexendo no próprio CI. Lê arquivos `kind: ci` e `config`.
+
+- **Falha ignorada** (`ci/failure-ignored`): conta, antes e depois, as linhas com `continue-on-error: true`, `|| true`, `|| exit 0`, `|| :`, `; exit 0`, `set +e` e `if: false`; o que entrou bloqueia. `--passWithNoTests` só pede revisão. Nos `package.json`, a mesma conta é feita nos valores de `scripts`. A comparação é por linha e não por YAML, porque esses truques sempre cabem numa linha e assim não é preciso parser.
+- **Testes que deixam de rodar** (`ci/tests-not-run`): linhas com comando de teste (`npm test`, `npx vitest`, `jest`, `node --test`, `playwright test`…) que sumiram do workflow, ou o arquivo de CI apagado. Também o script `test` do `package.json` trocado por `echo`/`exit 0`/`true` ou apagado; o placeholder do `npm init` não conta.
+- **Cobertura reduzida** (`ci/coverage-lowered`): os limites de `lines`, `branches`, `functions` e `statements` lidos do AST de `vitest.config.*`/`jest.config.*` (só sob uma chave com "threshold"), de `package.json` (`jest.coverageThreshold`, `nyc`, `c8`) e de `.nycrc`/`.c8rc` em JSON, mais `check-coverage`. Valor menor, chave removida ou `true → false` bloqueia.
+
 #### `risk-map`
 
 Os analisadores devolvem `{ findings, reviewPlan?, trivial? }`; só o `risk-map` preenche os dois últimos.
@@ -258,7 +266,10 @@ comment  (workflow_run)  baixa o artefato → valida → confere o PR na API →
 - **Unitários** por regra: um par mínimo antes/depois → achados esperados.
 - **Fixtures** (`fixtures/<caso>/`): cada caso é um mini-repositório git montado no teste (`antes/` → commit, `depois/` → commit). Roda o `runLaudo` e compara com `expected.json`.
 - **Contrato** do registro: respostas gravadas do npm, para não depender da rede no CI.
-- **Bench** (`bench/`): lista de PRs públicos (limpos e feitos por agentes) → mede precisão, falsos positivos e tempo. O resultado vai para o README.
+- **Bench** (`bench/run.mjs`, `npm run bench`): clona (raso) os projetos de `bench/repos.json` e roda o Laudo em cada um dos últimos 10 commits da branch principal, cada um contra o anterior. Em projetos maduros, cada commit ali é um PR já revisado e mesclado, então um "bloqueado" é falso positivo até prova em contrário. O resultado vai para `bench/RESULTADOS.md`.
+  - **Primeira rodada (27/10/2026, 50 PRs de ky, Hono, Fastify, Express e Zod):** 0 bloqueados e 15 revisar. Três eram ruído e foram corrigidos: documentação contando como zona sensível (`Migration-Guide-V5.md` virou "banco de dados") e `middleware` como zona de login (o `serve-static` do Hono).
+  - **Segunda rodada:** 0 bloqueados, 38 aprovados e 12 revisar, todos justificáveis (workflows de release, `bearer-auth`, testes de fato removidos). Mediana de 0,7 s e p95 de 3,0 s por PR.
+  - Ainda falta a outra metade: PRs reais feitos por agentes que enfraqueceram testes, para medir quanto o Laudo **pega**, e não só quanto ele **não incomoda**.
 
 ## 11. Ordem de construção
 

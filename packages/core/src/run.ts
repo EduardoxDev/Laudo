@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { defaultCacheFile, FileCache } from './analyzers/deps/cache.js';
 import { deps } from './analyzers/deps/index.js';
 import { NpmRegistry, type RegistryClient } from './analyzers/deps/registry.js';
+import { ciIntegrity } from './analyzers/ci-integrity/index.js';
 import { mutation } from './analyzers/mutation/index.js';
 import { nodeStrykerRunner, type StrykerRunner } from './analyzers/mutation/stryker.js';
 import { riskMap } from './analyzers/risk-map/index.js';
@@ -22,7 +23,7 @@ import type {
 import { compareFindings, computeVerdict } from './verdict.js';
 import { VERSION } from './version.js';
 
-export const ANALYZERS: readonly Analyzer[] = [testIntegrity, deps, riskMap, mutation];
+export const ANALYZERS: readonly Analyzer[] = [testIntegrity, ciIntegrity, deps, riskMap, mutation];
 
 export interface RunOptions {
   cwd: string;

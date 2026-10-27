@@ -14,7 +14,10 @@
     "build": "tsc -b",
     "typecheck": "tsc -b && tsc -p tsconfig.test.json",
     "test": "vitest run",
-    "laudo": "node packages/cli/dist/index.js"
+    "laudo": "node packages/cli/dist/index.js",
+    "bundle": "node packages/action/build.mjs",
+    "bench": "npm run build && node bench/run.mjs",
+    "demo": "npm run build && node scripts/demo-svg.mjs"
   },
   "devDependencies": {
     "@types/node": "20.19.43",

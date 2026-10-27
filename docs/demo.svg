@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="939" height="708" viewBox="0 0 939 708" role="img" aria-label="Laudo bloqueando um PR feito por agente de IA">
+<style>
+.t{font:14px ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;fill:#e6edf3}
+.b{font-weight:700}.d{opacity:.6}
+.cmd{animation:type 9.7s steps(11) infinite}
+@keyframes type{0%{clip-path:inset(0 100% 0 0)}12.37%,100%{clip-path:inset(0 0 0 0)}}
+.l0{opacity:0;animation:l0 9.7s infinite}@keyframes l0{0%,16.49%{opacity:0}16.60%,99%{opacity:1}100%{opacity:0}}
+.l1{opacity:0;animation:l1 9.7s infinite}@keyframes l1{0%,17.22%{opacity:0}17.32%,99%{opacity:1}100%{opacity:0}}
+.l2{opacity:0;animation:l2 9.7s infinite}@keyframes l2{0%,17.94%{opacity:0}18.04%,99%{opacity:1}100%{opacity:0}}
+.l3{opacity:0;animation:l3 9.7s infinite}@keyframes l3{0%,18.66%{opacity:0}18.76%,99%{opacity:1}100%{opacity:0}}
+.l4{opacity:0;animation:l4 9.7s infinite}@keyframes l4{0%,19.38%{opacity:0}19.48%,99%{opacity:1}100%{opacity:0}}
+.l5{opacity:0;animation:l5 9.7s infinite}@keyframes l5{0%,20.10%{opacity:0}20.21%,99%{opacity:1}100%{opacity:0}}
+.l6{opacity:0;animation:l6 9.7s infinite}@keyframes l6{0%,20.82%{opacity:0}20.93%,99%{opacity:1}100%{opacity:0}}
+.l7{opacity:0;animation:l7 9.7s infinite}@keyframes l7{0%,21.55%{opacity:0}21.65%,99%{opacity:1}100%{opacity:0}}
+.l8{opacity:0;animation:l8 9.7s infinite}@keyframes l8{0%,22.27%{opacity:0}22.37%,99%{opacity:1}100%{opacity:0}}
+.l9{opacity:0;animation:l9 9.7s infinite}@keyframes l9{0%,22.99%{opacity:0}23.09%,99%{opacity:1}100%{opacity:0}}
+.l10{opacity:0;animation:l10 9.7s infinite}@keyframes l10{0%,23.71%{opacity:0}23.81%,99%{opacity:1}100%{opacity:0}}
+.l11{opacity:0;animation:l11 9.7s infinite}@keyframes l11{0%,24.43%{opacity:0}24.54%,99%{opacity:1}100%{opacity:0}}
+.l12{opacity:0;animation:l12 9.7s infinite}@keyframes l12{0%,25.15%{opacity:0}25.26%,99%{opacity:1}100%{opacity:0}}
+.l13{opacity:0;animation:l13 9.7s infinite}@keyframes l13{0%,25.88%{opacity:0}25.98%,99%{opacity:1}100%{opacity:0}}
+.l14{opacity:0;animation:l14 9.7s infinite}@keyframes l14{0%,26.60%{opacity:0}26.70%,99%{opacity:1}100%{opacity:0}}
+.l15{opacity:0;animation:l15 9.7s infinite}@keyframes l15{0%,27.32%{opacity:0}27.42%,99%{opacity:1}100%{opacity:0}}
+.l16{opacity:0;animation:l16 9.7s infinite}@keyframes l16{0%,28.04%{opacity:0}28.14%,99%{opacity:1}100%{opacity:0}}
+.l17{opacity:0;animation:l17 9.7s infinite}@keyframes l17{0%,28.76%{opacity:0}28.87%,99%{opacity:1}100%{opacity:0}}
+.l18{opacity:0;animation:l18 9.7s infinite}@keyframes l18{0%,29.48%{opacity:0}29.59%,99%{opacity:1}100%{opacity:0}}
+.l19{opacity:0;animation:l19 9.7s infinite}@keyframes l19{0%,30.21%{opacity:0}30.31%,99%{opacity:1}100%{opacity:0}}
+.l20{opacity:0;animation:l20 9.7s infinite}@keyframes l20{0%,30.93%{opacity:0}31.03%,99%{opacity:1}100%{opacity:0}}
+.l21{opacity:0;animation:l21 9.7s infinite}@keyframes l21{0%,31.65%{opacity:0}31.75%,99%{opacity:1}100%{opacity:0}}
+.l22{opacity:0;animation:l22 9.7s infinite}@keyframes l22{0%,32.37%{opacity:0}32.47%,99%{opacity:1}100%{opacity:0}}
+.l23{opacity:0;animation:l23 9.7s infinite}@keyframes l23{0%,33.09%{opacity:0}33.20%,99%{opacity:1}100%{opacity:0}}
+.l24{opacity:0;animation:l24 9.7s infinite}@keyframes l24{0%,33.81%{opacity:0}33.92%,99%{opacity:1}100%{opacity:0}}
+.l25{opacity:0;animation:l25 9.7s infinite}@keyframes l25{0%,34.54%{opacity:0}34.64%,99%{opacity:1}100%{opacity:0}}
+.l26{opacity:0;animation:l26 9.7s infinite}@keyframes l26{0%,35.26%{opacity:0}35.36%,99%{opacity:1}100%{opacity:0}}
+.l27{opacity:0;animation:l27 9.7s infinite}@keyframes l27{0%,35.98%{opacity:0}36.08%,99%{opacity:1}100%{opacity:0}}
+.l28{opacity:0;animation:l28 9.7s infinite}@keyframes l28{0%,36.70%{opacity:0}36.80%,99%{opacity:1}100%{opacity:0}}
+.l29{opacity:0;animation:l29 9.7s infinite}@keyframes l29{0%,37.42%{opacity:0}37.53%,99%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.cmd,[class*=" l"]{animation:none!important;opacity:1!important;clip-path:none!important}}
+</style>
+<rect width="939" height="708" rx="10" fill="#0d1117"/>
+<circle cx="20" cy="18" r="6" fill="#ff5f57"/><circle cx="40" cy="18" r="6" fill="#febc2e"/><circle cx="60" cy="18" r="6" fill="#28c840"/>
+<text x="20" y="48" class="t"><tspan fill="#7ee787">$ </tspan><tspan class="cmd">laudo check</tspan></text>
+<text x="20" y="88" class="t l0" xml:space="preserve"><tspan class="d">Laudo · 4 arquivos alterados · main → HEAD</tspan></text>
+<text x="20" y="108" class="t l1" xml:space="preserve"></text>
+<text x="20" y="128" class="t l2" xml:space="preserve"><tspan fill="#ff7b72" class="b">✖ BLOQUEADO</tspan><tspan>  2 problemas · 1 ponto para revisar</tspan></text>
+<text x="20" y="148" class="t l3" xml:space="preserve"></text>
+<text x="20" y="168" class="t l4" xml:space="preserve"><tspan class="b">Por onde revisar:</tspan><tspan> 16 linhas em 3 arquivos · 10 linhas triviais escondidas (1 arquivo)</tspan></text>
+<text x="20" y="188" class="t l5" xml:space="preserve"><tspan>  </tspan><tspan class="d">1.</tspan><tspan> </tspan><tspan fill="#79c0ff">src/payments/refund.ts</tspan><tspan>  </tspan><tspan fill="#7ee787">+12</tspan><tspan> </tspan><tspan fill="#ff7b72">−0</tspan><tspan>  </tspan><tspan fill="#e3b341">dinheiro e pagamentos</tspan></text>
+<text x="20" y="208" class="t l6" xml:space="preserve"><tspan>  </tspan><tspan class="d">2.</tspan><tspan> </tspan><tspan fill="#79c0ff">package.json</tspan><tspan>  </tspan><tspan fill="#7ee787">+1</tspan><tspan> </tspan><tspan fill="#ff7b72">−0</tspan><tspan>  </tspan><tspan class="d">config</tspan></text>
+<text x="20" y="228" class="t l7" xml:space="preserve"><tspan>  </tspan><tspan class="d">3.</tspan><tspan> </tspan><tspan fill="#79c0ff">test/cart.test.ts</tspan><tspan>  </tspan><tspan fill="#7ee787">+2</tspan><tspan> </tspan><tspan fill="#ff7b72">−1</tspan><tspan>  </tspan><tspan class="d">teste</tspan></text>
+<text x="20" y="248" class="t l8" xml:space="preserve"></text>
+<text x="20" y="268" class="t l9" xml:space="preserve"><tspan>  </tspan><tspan fill="#ff7b72">✖</tspan><tspan> </tspan><tspan class="b">"lodahs" tem nome quase igual ao de "lodash"</tspan></text>
+<text x="20" y="288" class="t l10" xml:space="preserve"><tspan>    </tspan><tspan fill="#79c0ff">package.json:6</tspan><tspan> · </tspan><tspan class="d">deps/typosquat</tspan></text>
+<text x="20" y="308" class="t l11" xml:space="preserve"><tspan>    </tspan><tspan fill="#7ee787">+ "lodahs": "^1.0.0"</tspan></text>
+<text x="20" y="328" class="t l12" xml:space="preserve"><tspan>    · em dependencies</tspan></text>
+<text x="20" y="348" class="t l13" xml:space="preserve"><tspan>    · nome parecido com "lodash", um pacote popular</tspan></text>
+<text x="20" y="368" class="t l14" xml:space="preserve"><tspan>    · publicado há 3 dias</tspan></text>
+<text x="20" y="388" class="t l15" xml:space="preserve"><tspan>    · 12 downloads na última semana</tspan></text>
+<text x="20" y="408" class="t l16" xml:space="preserve"><tspan>    </tspan><tspan class="d">→ Confira se o certo não é "lodash". Nomes parecidos são um golpe comum para instalar código malicioso.</tspan></text>
+<text x="20" y="428" class="t l17" xml:space="preserve"></text>
+<text x="20" y="448" class="t l18" xml:space="preserve"><tspan>  </tspan><tspan fill="#ff7b72">✖</tspan><tspan> </tspan><tspan class="b">Assert trocado por um que sempre passa em "soma preço vezes quantidade"</tspan></text>
+<text x="20" y="468" class="t l19" xml:space="preserve"><tspan>    </tspan><tspan fill="#79c0ff">test/cart.test.ts:7</tspan><tspan> · </tspan><tspan class="d">tests/tautology</tspan></text>
+<text x="20" y="488" class="t l20" xml:space="preserve"><tspan>    </tspan><tspan fill="#ff7b72">- expect(total([{ price: 10, qty: 2 }, { price: 11, qty: 2 }])).toBe(42)</tspan></text>
+<text x="20" y="508" class="t l21" xml:space="preserve"><tspan>    </tspan><tspan fill="#7ee787">+ expect(result).toBe(result)</tspan></text>
+<text x="20" y="528" class="t l22" xml:space="preserve"><tspan>    </tspan><tspan class="d">→ Esse assert compara um valor com ele mesmo (ou com uma constante): passa sempre e não testa nada.</tspan></text>
+<text x="20" y="548" class="t l23" xml:space="preserve"></text>
+<text x="20" y="568" class="t l24" xml:space="preserve"><tspan>  </tspan><tspan fill="#e3b341">●</tspan><tspan> </tspan><tspan class="b">Mudança em zona sensível: dinheiro e pagamentos</tspan></text>
+<text x="20" y="588" class="t l25" xml:space="preserve"><tspan>    </tspan><tspan fill="#79c0ff">src/payments/refund.ts</tspan><tspan> · </tspan><tspan class="d">risk/sensitive-zone</tspan></text>
+<text x="20" y="608" class="t l26" xml:space="preserve"><tspan>    · src/payments/refund.ts (+12 −0)</tspan></text>
+<text x="20" y="628" class="t l27" xml:space="preserve"><tspan>    </tspan><tspan class="d">→ Erros aqui custam caro. Revise estes arquivos com calma, de preferência com quem conhece a área.</tspan></text>
+<text x="20" y="648" class="t l28" xml:space="preserve"></text>
+<text x="20" y="668" class="t l29" xml:space="preserve"><tspan class="d">0,9 s · laudo 0.1.0</tspan></text>
+</svg>

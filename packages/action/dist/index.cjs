@@ -16751,7 +16751,7 @@ function escapeCommand(s) {
 
 // packages/action/src/run.ts
 var import_node_fs5 = require("node:fs");
-var import_node_path8 = require("node:path");
+var import_node_path10 = require("node:path");
 
 // packages/core/dist/run.js
 var import_node_crypto = require("node:crypto");
@@ -16867,14 +16867,14 @@ function newDependencies(before, after) {
   const old = before === null ? {} : parseManifest(before);
   const next = parseManifest(after);
   const known = new Set(ALL_SECTIONS.flatMap((s) => Object.keys(old[s] ?? {})));
-  const lines = after.split("\n");
+  const lines2 = after.split("\n");
   const out = [];
   for (const section of SECTIONS) {
     for (const [name, spec] of Object.entries(next[section] ?? {})) {
       if (known.has(name) || typeof spec !== "string")
         continue;
       const dep = { name, spec, section };
-      const i = lines.findIndex((l) => l.includes(`"${name}"`));
+      const i = lines2.findIndex((l) => l.includes(`"${name}"`));
       if (i >= 0)
         dep.line = i + 1;
       out.push(dep);
@@ -50485,14 +50485,330 @@ async function gatherFacts(item, registry2) {
   return { ...base, info, weeklyDownloads, created };
 }
 
+// packages/core/dist/analyzers/ci-integrity/index.js
+var import_node_path4 = require("node:path");
+
+// packages/core/dist/analyzers/ci-integrity/coverage.js
+var import_node_path3 = require("node:path");
+
+// packages/core/dist/util/ast.js
+var import_parser = __toESM(require_lib(), 1);
+function parseSource(code2, filename) {
+  return (0, import_parser.parse)(code2, {
+    sourceType: "unambiguous",
+    errorRecovery: true,
+    allowReturnOutsideFunction: true,
+    allowAwaitOutsideFunction: true,
+    allowImportExportEverywhere: true,
+    plugins: pluginsFor(filename)
+  });
+}
+function pluginsFor(filename) {
+  if (/\.[cm]?tsx$/.test(filename))
+    return ["typescript", "jsx"];
+  if (/\.[cm]?ts$/.test(filename))
+    return ["typescript"];
+  return ["jsx"];
+}
+var SKIP_KEYS = /* @__PURE__ */ new Set([
+  "loc",
+  "start",
+  "end",
+  "range",
+  "extra",
+  "errors",
+  "tokens",
+  "comments",
+  "leadingComments",
+  "trailingComments",
+  "innerComments"
+]);
+function children(node2) {
+  const out = [];
+  for (const key of Object.keys(node2)) {
+    if (SKIP_KEYS.has(key))
+      continue;
+    const value = node2[key];
+    if (Array.isArray(value)) {
+      for (const item of value)
+        if (isNode(item))
+          out.push(item);
+    } else if (isNode(value)) {
+      out.push(value);
+    }
+  }
+  return out;
+}
+function isNode(value) {
+  return typeof value === "object" && value !== null && typeof value.type === "string";
+}
+function normalize(code2) {
+  return code2.replace(/\s+/g, " ").replace(/\s*([()[\]{},;:.=<>+\-*/!?&|])\s*/g, "$1").replace(/'/g, '"').replace(/,([)\]}])/g, "$1").trim();
+}
+var Source = class {
+  code;
+  constructor(code2) {
+    this.code = code2;
+  }
+  /** Forma normalizada, para comparar. */
+  text(node2) {
+    return normalize(this.slice(node2));
+  }
+  /** O código como foi escrito, numa linha só, para mostrar no relatório. */
+  display(node2) {
+    return this.slice(node2).replace(/\s+/g, " ").trim();
+  }
+  slice(node2) {
+    return this.code.slice(node2.start ?? 0, node2.end ?? 0);
+  }
+};
+function memberChain(node2) {
+  const props = [];
+  let cur = node2;
+  while (cur.type === "MemberExpression" || cur.type === "OptionalMemberExpression") {
+    if (cur.computed || cur.property.type !== "Identifier")
+      return null;
+    props.unshift(cur.property.name);
+    cur = cur.object;
+  }
+  return cur.type === "Identifier" ? [cur.name, ...props] : null;
+}
+function isFunction(node2) {
+  return node2?.type === "ArrowFunctionExpression" || node2?.type === "FunctionExpression";
+}
+
+// packages/core/dist/analyzers/ci-integrity/coverage.js
+var METRICS = /* @__PURE__ */ new Set(["lines", "branches", "functions", "statements"]);
+var CHECK_FLAGS = /* @__PURE__ */ new Set(["check-coverage", "checkCoverage"]);
+function coverageThresholds(path, text2) {
+  const name = (0, import_node_path3.basename)(path);
+  try {
+    if (/\.[cm]?[jt]s$/.test(name))
+      return fromJs(text2, path);
+    const json2 = JSON.parse(text2);
+    const isRc = /^\.(nycrc|c8rc)/.test(name);
+    return fromJson(json2, [], (keys) => isRc || keys.some((k) => /threshold/i.test(k)) || keys[0] === "nyc" || keys[0] === "c8", text2);
+  } catch {
+    return [];
+  }
+}
+function coverageLowered(before, after, where2) {
+  const now = new Map(after.map((x) => [x.path, x]));
+  const changes = [];
+  for (const old of before) {
+    const cur = now.get(old.path);
+    const label = old.path.split(".").pop();
+    if (!cur)
+      changes.push({ before: `${label}: ${old.value}`, after: `${label}: (removido)` });
+    else if (typeof old.value === "number" && typeof cur.value === "number" && cur.value < old.value) {
+      changes.push({ before: `${label}: ${old.value}`, after: `${label}: ${cur.value}`, ...cur.line ? { line: cur.line } : {} });
+    } else if (old.value === true && cur.value === false) {
+      changes.push({ before: `${label}: true`, after: `${label}: false`, ...cur.line ? { line: cur.line } : {} });
+    }
+  }
+  if (changes.length === 0)
+    return [];
+  const finding = {
+    rule: "ci/coverage-lowered",
+    level: "block",
+    title: `Limite de cobertura reduzido em ${where2}`,
+    evidence: { before: changes.map((c) => c.before).join("\n"), after: changes.map((c) => c.after).join("\n") },
+    hint: "Baixar o limite faz o CI aceitar c\xF3digo menos testado. Se for de prop\xF3sito, deixe o motivo escrito no PR."
+  };
+  const line = changes.find((c) => c.line)?.line;
+  if (line)
+    finding.line = line;
+  return [finding];
+}
+function fromJson(node2, keys, counts, text2) {
+  if (typeof node2 !== "object" || node2 === null || Array.isArray(node2))
+    return [];
+  const out = [];
+  for (const [k, v] of Object.entries(node2)) {
+    const path = [...keys, k];
+    if ((METRICS.has(k) && typeof v === "number" && v >= 0 || CHECK_FLAGS.has(k) && typeof v === "boolean") && counts(path)) {
+      const i = text2.split("\n").findIndex((l) => l.includes(`"${k}"`));
+      out.push({ path: path.join("."), value: v, ...i >= 0 ? { line: i + 1 } : {} });
+    } else {
+      out.push(...fromJson(v, path, counts, text2));
+    }
+  }
+  return out;
+}
+function fromJs(code2, filename) {
+  const ast = parseSource(code2, filename);
+  const out = [];
+  const visit2 = (node2, keys) => {
+    if (node2.type === "ObjectExpression") {
+      for (const prop of node2.properties) {
+        if (prop.type !== "ObjectProperty" || prop.computed)
+          continue;
+        const key = prop.key.type === "Identifier" ? prop.key.name : prop.key.type === "StringLiteral" ? prop.key.value : null;
+        if (key === null)
+          continue;
+        const path = [...keys, key];
+        const v = prop.value;
+        const inThreshold = path.some((k) => /threshold/i.test(k));
+        if (METRICS.has(key) && v.type === "NumericLiteral" && inThreshold) {
+          out.push({ path: path.join("."), value: v.value, ...v.loc ? { line: v.loc.start.line } : {} });
+        } else if (CHECK_FLAGS.has(key) && v.type === "BooleanLiteral") {
+          out.push({ path: path.join("."), value: v.value, ...v.loc ? { line: v.loc.start.line } : {} });
+        } else {
+          visit2(v, path);
+        }
+      }
+      return;
+    }
+    for (const child of children(node2))
+      visit2(child, keys);
+  };
+  visit2(ast.program, []);
+  return out;
+}
+
+// packages/core/dist/analyzers/ci-integrity/softening.js
+var IGNORE_FAILURE = [
+  { pattern: /continue-on-error:\s*(true|\$\{\{\s*true\s*\}\})/, what: "continue-on-error: true", level: "block" },
+  { pattern: /\|\|\s*(true|:|exit\s+0)(\s|$|;|&|\)|")/, what: "|| true", level: "block" },
+  { pattern: /;\s*exit\s+0(\s|$|")/, what: "; exit 0", level: "block" },
+  { pattern: /\bset\s+\+e\b/, what: "set +e", level: "block" },
+  { pattern: /^\s*(-\s+)?if:\s*(false|\$\{\{\s*false\s*\}\})\s*$/, what: "if: false", level: "block" },
+  { pattern: /--pass-?[wW]ith-?[nN]o-?[tT]ests\b/, what: "--passWithNoTests", level: "review" }
+];
+var TEST_COMMAND = /\b(npm|pnpm|yarn|bun)\s+(run\s+)?test\b|\bnpx\s+(vitest|jest|mocha|ava|playwright\s+test)\b|(^|[\s;&|"'])(vitest|jest|mocha|ava)(\s|$|"|')|\bnode\s+--test\b|\bplaywright\s+test\b/;
+var PLACEHOLDER = /^\s*(echo\b|exit\s+0\b|true\b|:\s*$)/;
+function failureIgnored(before, after, where2) {
+  const out = [];
+  for (const rule of IGNORE_FAILURE) {
+    const added = multisetAdded(before.filter((l) => rule.pattern.test(l)), after.filter((l) => rule.pattern.test(l)));
+    if (added.length === 0)
+      continue;
+    const finding = {
+      rule: "ci/failure-ignored",
+      level: rule.level,
+      title: rule.what === "if: false" ? `Um passo foi desligado com if: false em ${where2}` : rule.what === "--passWithNoTests" ? `${where2} passou a aceitar rodar sem nenhum teste (--passWithNoTests)` : `${where2} passou a ignorar falhas (${rule.what})`,
+      evidence: { after: added.map((l) => l.trim()).join("\n") },
+      hint: rule.what === "--passWithNoTests" ? "Se os testes sumirem, o CI continua verde. Confira se algum teste foi apagado neste PR." : "Com isso o CI fica verde mesmo quando o comando falha. Corrija a falha em vez de escond\xEA-la."
+    };
+    const line = lineOf(after, added[0]);
+    if (line)
+      finding.line = line;
+    out.push(finding);
+  }
+  return out;
+}
+function testStepsRemoved(before, after, where2) {
+  const was = before.filter((l) => TEST_COMMAND.test(l) && !isComment(l));
+  const now = (after ?? []).filter((l) => TEST_COMMAND.test(l) && !isComment(l));
+  const removed = multisetAdded(now, was);
+  if (removed.length === 0 || now.length >= was.length)
+    return [];
+  return [
+    {
+      rule: "ci/tests-not-run",
+      level: "block",
+      title: after === null ? `O arquivo de CI ${where2}, que rodava os testes, foi apagado` : `Um passo que rodava testes saiu de ${where2}`,
+      evidence: { before: removed.map((l) => l.trim()).join("\n") },
+      hint: "Sem esse passo, os testes deixam de rodar no CI e qualquer mudan\xE7a passa."
+    }
+  ];
+}
+function testScriptNeutered(before, after) {
+  if (before === void 0 || PLACEHOLDER.test(before))
+    return [];
+  if (after !== void 0 && !PLACEHOLDER.test(after))
+    return [];
+  const finding = {
+    rule: "ci/tests-not-run",
+    level: "block",
+    title: after === void 0 ? 'O script "test" foi apagado do package.json' : 'O script "test" do package.json n\xE3o roda mais os testes',
+    evidence: { before: `"test": ${JSON.stringify(before)}` },
+    hint: '`npm test` passa a "passar" sem testar nada, e o CI junto.'
+  };
+  if (after !== void 0)
+    finding.evidence.after = `"test": ${JSON.stringify(after)}`;
+  return [finding];
+}
+function multisetAdded(before, after) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const l of before)
+    counts.set(l.trim(), (counts.get(l.trim()) ?? 0) + 1);
+  return after.filter((l) => {
+    const n = counts.get(l.trim()) ?? 0;
+    if (n === 0)
+      return true;
+    counts.set(l.trim(), n - 1);
+    return false;
+  });
+}
+function isComment(line) {
+  return /^\s*#/.test(line);
+}
+function lineOf(lines2, target) {
+  const i = lines2.indexOf(target);
+  return i >= 0 ? i + 1 : void 0;
+}
+
+// packages/core/dist/analyzers/ci-integrity/index.js
+var isPackageJson = (f) => (0, import_node_path4.basename)(f.path) === "package.json";
+var ciIntegrity = {
+  name: "ci-integrity",
+  appliesTo: (cs) => cs.files.some((f) => (f.kind === "ci" || f.kind === "config") && !f.skipped),
+  async run(cs) {
+    const findings = [];
+    const add = (file2, list2) => findings.push(...list2.map((f) => ({ ...f, file: file2 })));
+    for (const f of cs.files) {
+      if (f.skipped || f.kind !== "ci" && f.kind !== "config")
+        continue;
+      const before = f.before ?? "";
+      if (f.kind === "ci") {
+        const b = lines(before);
+        if (f.after === null) {
+          add(f.path, testStepsRemoved(b, null, f.path));
+          continue;
+        }
+        const a = lines(f.after);
+        add(f.path, [...failureIgnored(b, a, f.path), ...testStepsRemoved(b, a, f.path)]);
+        continue;
+      }
+      if (isPackageJson(f)) {
+        const b = scripts(before);
+        const a = scripts(f.after ?? "");
+        if (b && a) {
+          add(f.path, failureIgnored(Object.values(b), Object.values(a), `Um script de ${f.path}`));
+          add(f.path, testScriptNeutered(b.test, a.test));
+        }
+      }
+      if (f.before !== null) {
+        const where2 = f.path;
+        add(f.path, coverageLowered(coverageThresholds(f.path, f.before), f.after === null ? [] : coverageThresholds(f.path, f.after), where2));
+      }
+    }
+    return { findings };
+  }
+};
+function lines(text2) {
+  return text2.split(/\r?\n/);
+}
+function scripts(text2) {
+  try {
+    const s = JSON.parse(text2).scripts;
+    if (typeof s !== "object" || s === null)
+      return {};
+    return Object.fromEntries(Object.entries(s).filter((e) => typeof e[1] === "string"));
+  } catch {
+    return null;
+  }
+}
+
 // packages/core/dist/analyzers/mutation/index.js
 var import_node_fs4 = require("node:fs");
 var import_node_os2 = require("node:os");
-var import_node_path6 = require("node:path");
+var import_node_path8 = require("node:path");
 
 // packages/core/dist/collect/changeset.js
 var import_promises = require("node:fs/promises");
-var import_node_path3 = require("node:path");
+var import_node_path5 = require("node:path");
 
 // packages/core/dist/collect/classify.js
 var CODE_EXT = /\.[cm]?[jt]sx?$/;
@@ -50678,7 +50994,7 @@ async function readBlob(root, sha, path) {
 }
 async function readWorktree(root, path) {
   try {
-    return checkContent(await (0, import_promises.readFile)((0, import_node_path3.join)(root, path), "utf8"));
+    return checkContent(await (0, import_promises.readFile)((0, import_node_path5.join)(root, path), "utf8"));
   } catch {
     return null;
   }
@@ -50695,7 +51011,7 @@ async function workspacePackages(root) {
   const paths = out.split("\0").filter((p) => p === "package.json" || p.endsWith("/package.json"));
   const names = await mapLimit(paths, READ_CONCURRENCY, async (p) => {
     try {
-      const name = JSON.parse(await (0, import_promises.readFile)((0, import_node_path3.join)(root, p), "utf8")).name;
+      const name = JSON.parse(await (0, import_promises.readFile)((0, import_node_path5.join)(root, p), "utf8")).name;
       return typeof name === "string" ? name : null;
     } catch {
       return null;
@@ -50733,7 +51049,7 @@ function toMutatePattern(r) {
 }
 
 // packages/core/dist/analyzers/mutation/report.js
-var import_node_path4 = require("node:path");
+var import_node_path6 = require("node:path");
 var SNIPPET = 60;
 function parseStrykerReport(json2, root) {
   const report = json2;
@@ -50741,7 +51057,7 @@ function parseStrykerReport(json2, root) {
   const escaped = [];
   for (const [rawPath, file2] of Object.entries(report.files ?? {})) {
     const path = normalizePath(rawPath, root);
-    const lines = (file2.source ?? "").split(/\r?\n/);
+    const lines2 = (file2.source ?? "").split(/\r?\n/);
     for (const m of file2.mutants ?? []) {
       if (m.status === "Killed" || m.status === "Timeout")
         killed++;
@@ -50751,7 +51067,7 @@ function parseStrykerReport(json2, root) {
           file: path,
           line,
           mutator: m.mutatorName ?? "?",
-          original: snippet(lines, m.location),
+          original: snippet(lines2, m.location),
           replacement: oneLine(m.replacement ?? ""),
           status: m.status
         });
@@ -50802,15 +51118,15 @@ function mutationFindings(parsed, summary, opts) {
   });
 }
 function normalizePath(p, root) {
-  const rel = (0, import_node_path4.isAbsolute)(p) ? (0, import_node_path4.relative)(root, p) : p;
+  const rel = (0, import_node_path6.isAbsolute)(p) ? (0, import_node_path6.relative)(root, p) : p;
   return rel.replace(/\\/g, "/").replace(/^\.\//, "");
 }
-function snippet(lines, loc) {
+function snippet(lines2, loc) {
   const sl = loc?.start?.line;
   const sc = loc?.start?.column;
   if (!sl || !sc)
     return "?";
-  const line = lines[sl - 1] ?? "";
+  const line = lines2[sl - 1] ?? "";
   const sameLine = loc?.end?.line === sl && loc.end.column;
   const text2 = sameLine ? line.slice(sc - 1, loc.end.column - 1) : `${line.slice(sc - 1)}\u2026`;
   return oneLine(text2);
@@ -50823,17 +51139,17 @@ function oneLine(s) {
 // packages/core/dist/analyzers/mutation/stryker.js
 var import_node_child_process2 = require("node:child_process");
 var import_node_fs3 = require("node:fs");
-var import_node_path5 = require("node:path");
+var import_node_path7 = require("node:path");
 var RUNNERS = ["vitest", "jest", "mocha"];
 function findStryker(root) {
-  const corePkg = (0, import_node_path5.join)(root, "node_modules", "@stryker-mutator", "core", "package.json");
+  const corePkg = (0, import_node_path7.join)(root, "node_modules", "@stryker-mutator", "core", "package.json");
   if (!(0, import_node_fs3.existsSync)(corePkg)) {
     return { missing: "o projeto n\xE3o tem o Stryker instalado (npm install -D @stryker-mutator/core e o runner do seu executor de testes, ex.: @stryker-mutator/vitest-runner)" };
   }
   const pkg = JSON.parse((0, import_node_fs3.readFileSync)(corePkg, "utf8"));
   const binRel = typeof pkg.bin === "string" ? pkg.bin : pkg.bin?.stryker ?? "bin/stryker.js";
-  const runner = RUNNERS.find((r) => (0, import_node_fs3.existsSync)((0, import_node_path5.join)(root, "node_modules", "@stryker-mutator", `${r}-runner`))) ?? "command";
-  return { bin: (0, import_node_path5.join)(root, "node_modules", "@stryker-mutator", "core", binRel), version: pkg.version ?? "?", runner };
+  const runner = RUNNERS.find((r) => (0, import_node_fs3.existsSync)((0, import_node_path7.join)(root, "node_modules", "@stryker-mutator", `${r}-runner`))) ?? "command";
+  return { bin: (0, import_node_path7.join)(root, "node_modules", "@stryker-mutator", "core", binRel), version: pkg.version ?? "?", runner };
 }
 function strykerConfig(mutate, runner, paths) {
   return {
@@ -50907,15 +51223,15 @@ var mutation = {
       if (dirty.trim())
         return skip("h\xE1 mudan\xE7as n\xE3o commitadas nos arquivos alterados; commite ou use --worktree");
     }
-    const work = (0, import_node_fs4.mkdtempSync)((0, import_node_path6.join)((0, import_node_os2.tmpdir)(), "laudo-stryker-"));
+    const work = (0, import_node_fs4.mkdtempSync)((0, import_node_path8.join)((0, import_node_os2.tmpdir)(), "laudo-stryker-"));
     try {
       const paths = {
-        report: (0, import_node_path6.join)(work, "mutation.json"),
+        report: (0, import_node_path8.join)(work, "mutation.json"),
         incremental: `${LAUDO_DIR}/stryker-incremental.json`,
         tempDir: `${LAUDO_DIR}/stryker-tmp`
       };
-      (0, import_node_fs4.mkdirSync)((0, import_node_path6.join)(cs.root, LAUDO_DIR), { recursive: true });
-      const configFile = (0, import_node_path6.join)(work, "stryker.config.json");
+      (0, import_node_fs4.mkdirSync)((0, import_node_path8.join)(cs.root, LAUDO_DIR), { recursive: true });
+      const configFile = (0, import_node_path8.join)(work, "stryker.config.json");
       (0, import_node_fs4.writeFileSync)(configFile, JSON.stringify(strykerConfig(ranges.map(toMutatePattern), stryker.runner, paths), null, 2));
       const timeoutMs = ctx.config.mutation.timeoutSeconds * 1e3;
       const run2 = await ctx.stryker.run({ cwd: cs.root, bin: stryker.bin, configFile, timeoutMs });
@@ -50963,92 +51279,6 @@ function lineCounts(file2) {
     removed += h.oldLines;
   }
   return { added, removed };
-}
-
-// packages/core/dist/util/ast.js
-var import_parser = __toESM(require_lib(), 1);
-function parseSource(code2, filename) {
-  return (0, import_parser.parse)(code2, {
-    sourceType: "unambiguous",
-    errorRecovery: true,
-    allowReturnOutsideFunction: true,
-    allowAwaitOutsideFunction: true,
-    allowImportExportEverywhere: true,
-    plugins: pluginsFor(filename)
-  });
-}
-function pluginsFor(filename) {
-  if (/\.[cm]?tsx$/.test(filename))
-    return ["typescript", "jsx"];
-  if (/\.[cm]?ts$/.test(filename))
-    return ["typescript"];
-  return ["jsx"];
-}
-var SKIP_KEYS = /* @__PURE__ */ new Set([
-  "loc",
-  "start",
-  "end",
-  "range",
-  "extra",
-  "errors",
-  "tokens",
-  "comments",
-  "leadingComments",
-  "trailingComments",
-  "innerComments"
-]);
-function children(node2) {
-  const out = [];
-  for (const key of Object.keys(node2)) {
-    if (SKIP_KEYS.has(key))
-      continue;
-    const value = node2[key];
-    if (Array.isArray(value)) {
-      for (const item of value)
-        if (isNode(item))
-          out.push(item);
-    } else if (isNode(value)) {
-      out.push(value);
-    }
-  }
-  return out;
-}
-function isNode(value) {
-  return typeof value === "object" && value !== null && typeof value.type === "string";
-}
-function normalize(code2) {
-  return code2.replace(/\s+/g, " ").replace(/\s*([()[\]{},;:.=<>+\-*/!?&|])\s*/g, "$1").replace(/'/g, '"').replace(/,([)\]}])/g, "$1").trim();
-}
-var Source = class {
-  code;
-  constructor(code2) {
-    this.code = code2;
-  }
-  /** Forma normalizada, para comparar. */
-  text(node2) {
-    return normalize(this.slice(node2));
-  }
-  /** O código como foi escrito, numa linha só, para mostrar no relatório. */
-  display(node2) {
-    return this.slice(node2).replace(/\s+/g, " ").trim();
-  }
-  slice(node2) {
-    return this.code.slice(node2.start ?? 0, node2.end ?? 0);
-  }
-};
-function memberChain(node2) {
-  const props = [];
-  let cur = node2;
-  while (cur.type === "MemberExpression" || cur.type === "OptionalMemberExpression") {
-    if (cur.computed || cur.property.type !== "Identifier")
-      return null;
-    props.unshift(cur.property.name);
-    cur = cur.object;
-  }
-  return cur.type === "Identifier" ? [cur.name, ...props] : null;
-}
-function isFunction(node2) {
-  return node2?.type === "ArrowFunctionExpression" || node2?.type === "FunctionExpression";
 }
 
 // packages/core/dist/analyzers/risk-map/trivial.js
@@ -51248,7 +51478,8 @@ var ZONES = [
   {
     id: "auth",
     label: "login e permiss\xF5es",
-    path: seg("auth|authn|authz|login|logout|signin|signup|session|sessions|oauth|sso|passport|jwt|permissions?|rbac|acl|middleware"),
+    // Sem "middleware": em frameworks como Hono e Express quase todo middleware é outra coisa (estáticos, CORS, log).
+    path: seg("auth|authn|authz|login|logout|signin|signup|session|sessions|oauth|sso|passport|jwt|permissions?|rbac|acl"),
     content: /\b(jwt\.(sign|verify)|bcrypt|argon2|passport\.\w+|getServerSession|httpOnly|sameSite|isAdmin|hasRole|hasPermission|authorize)\b/
   },
   {
@@ -51283,11 +51514,13 @@ var ZONES = [
   }
 ];
 var CUSTOM_LABEL = "zona marcada na config";
-function zonesFor(file2, lines, customGlobs) {
-  if (file2.kind === "test" || file2.kind === "snapshot")
-    return [];
-  const changed = [...lines.added, ...lines.removed];
+var DOCS = /\.(md|mdx|markdown|txt|rst|adoc)$|(^|\/)docs?\//i;
+function zonesFor(file2, lines2, customGlobs) {
   const paths = [file2.path, ...file2.oldPath ? [file2.oldPath] : []];
+  const custom2 = customGlobs.length > 0 && paths.some((p) => matchesAny(p, customGlobs));
+  if (file2.kind === "test" || file2.kind === "snapshot" || DOCS.test(file2.path) && !custom2)
+    return [];
+  const changed = [...lines2.added, ...lines2.removed];
   const out = [];
   for (const zone of ZONES) {
     const byPath = zone.path && paths.some((p) => zone.path.test(p));
@@ -51295,7 +51528,7 @@ function zonesFor(file2, lines, customGlobs) {
     if (byPath || byContent)
       out.push(zone.label);
   }
-  if (customGlobs.length > 0 && paths.some((p) => matchesAny(p, customGlobs)))
+  if (custom2)
     out.push(CUSTOM_LABEL);
   return out;
 }
@@ -51860,7 +52093,7 @@ function parse2(code2, filename) {
 
 // packages/core/dist/config.js
 var import_promises2 = require("node:fs/promises");
-var import_node_path7 = require("node:path");
+var import_node_path9 = require("node:path");
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -53602,14 +53835,14 @@ function toDotPath(_path) {
   return segs.join("");
 }
 function prettifyError(error62) {
-  const lines = [];
+  const lines2 = [];
   const issues = [...error62.issues].sort((a, b) => (a.path ?? []).length - (b.path ?? []).length);
   for (const issue2 of issues) {
-    lines.push(`\u2716 ${issue2.message}`);
+    lines2.push(`\u2716 ${issue2.message}`);
     if (issue2.path?.length)
-      lines.push(`  \u2192 at ${toDotPath(issue2.path)}`);
+      lines2.push(`  \u2192 at ${toDotPath(issue2.path)}`);
   }
-  return lines.join("\n");
+  return lines2.join("\n");
 }
 
 // node_modules/zod/v4/core/parse.js
@@ -54444,9 +54677,9 @@ var Doc = class {
       return;
     }
     const content = arg;
-    const lines = content.split("\n").filter((x) => x);
-    const minIndent = Math.min(...lines.map((x) => x.length - x.trimStart().length));
-    const dedented = lines.map((x) => x.slice(minIndent)).map((x) => " ".repeat(this.indent * 2) + x);
+    const lines2 = content.split("\n").filter((x) => x);
+    const minIndent = Math.min(...lines2.map((x) => x.length - x.trimStart().length));
+    const dedented = lines2.map((x) => x.slice(minIndent)).map((x) => " ".repeat(this.indent * 2) + x);
     for (const line of dedented) {
       this.content.push(line);
     }
@@ -71625,7 +71858,7 @@ ${external_exports.prettifyError(result2.error)}`);
 async function loadConfig(root) {
   let text2;
   try {
-    text2 = await (0, import_promises2.readFile)((0, import_node_path7.join)(root, CONFIG_FILE), "utf8");
+    text2 = await (0, import_promises2.readFile)((0, import_node_path9.join)(root, CONFIG_FILE), "utf8");
   } catch (err) {
     if (err.code === "ENOENT")
       return parseConfig({});
@@ -71662,7 +71895,7 @@ function compareFindings(a, b) {
 var VERSION = "0.1.0";
 
 // packages/core/dist/run.js
-var ANALYZERS = [testIntegrity, deps, riskMap, mutation];
+var ANALYZERS = [testIntegrity, ciIntegrity, deps, riskMap, mutation];
 async function runLaudo(opts) {
   const started = performance.now();
   const root = await repoRoot(opts.cwd);
@@ -71778,8 +72011,8 @@ function mutationLine(report) {
 function planSummary(report) {
   if (report.reviewPlan.length === 0 && report.trivial.length === 0)
     return null;
-  const lines = report.reviewPlan.reduce((sum, e) => sum + e.added + e.removed, 0);
-  const parts = [`${plural4(lines, "linha", "linhas")} em ${plural4(report.reviewPlan.length, "arquivo", "arquivos")}`];
+  const lines2 = report.reviewPlan.reduce((sum, e) => sum + e.added + e.removed, 0);
+  const parts = [`${plural4(lines2, "linha", "linhas")} em ${plural4(report.reviewPlan.length, "arquivo", "arquivos")}`];
   const trivialLines = report.trivial.reduce((sum, e) => sum + e.lines, 0);
   if (report.trivial.length > 0) {
     parts.push(`${plural4(trivialLines, "linha trivial escondida", "linhas triviais escondidas")} (${plural4(report.trivial.length, "arquivo", "arquivos")})`);
@@ -71927,6 +72160,9 @@ var RULES = {
   "deps/low-downloads": { maxLevel: "review", summary: "O pacote tem poucos downloads por semana." },
   "deps/registry-unavailable": { maxLevel: "review", summary: "N\xE3o deu para consultar o pacote no registro." },
   "risk/sensitive-zone": { maxLevel: "review", summary: "A mudan\xE7a toca uma zona sens\xEDvel (login, dinheiro, banco, segredos, CI)." },
+  "ci/failure-ignored": { maxLevel: "block", summary: "O CI ou um script passou a ignorar falhas (|| true, continue-on-error, if: false)." },
+  "ci/tests-not-run": { maxLevel: "block", summary: "Um passo ou script que rodava os testes foi removido ou esvaziado." },
+  "ci/coverage-lowered": { maxLevel: "block", summary: "Um limite de cobertura de testes foi reduzido, removido ou desligado." },
   "mutation/survived": {
     maxLevel: "block",
     summary: "Bugs inseridos de prop\xF3sito nas linhas alteradas n\xE3o fazem nenhum teste falhar: os testes n\xE3o provam esta mudan\xE7a."
@@ -72239,10 +72475,10 @@ function pullFromEvent(event) {
   return { number: pr.number, baseSha: pr.base.sha, headSha: pr.head.sha };
 }
 function resolveIn(root, path) {
-  return (0, import_node_path8.isAbsolute)(path) ? path : (0, import_node_path8.join)(root, path);
+  return (0, import_node_path10.isAbsolute)(path) ? path : (0, import_node_path10.join)(root, path);
 }
 function write(path, content) {
-  (0, import_node_fs5.mkdirSync)((0, import_node_path8.dirname)(path), { recursive: true });
+  (0, import_node_fs5.mkdirSync)((0, import_node_path10.dirname)(path), { recursive: true });
   (0, import_node_fs5.writeFileSync)(path, content);
 }
 

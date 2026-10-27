@@ -95,8 +95,18 @@ describe('zonesFor', () => {
     expect(zones('src/cart.ts', ['const token = jwt.sign(payload, key)'])).toEqual(['login e permissões']);
   });
 
-  it('não marca zona em testes e snapshots', () => {
+  it('não marca zona em testes, snapshots e documentação', () => {
     expect(zones('test/auth/login.test.ts', [], 'test')).toEqual([]);
+    // Casos reais do bench: guia de migração do Fastify e referência que cita hash.
+    expect(zones('docs/Guides/Migration-Guide-V5.md', [], 'other')).toEqual([]);
+    expect(zones('README.md', ['const hash = createHash("sha256")'], 'other')).toEqual([]);
+    // Marcado na config, o doc volta a contar (e ganha também a zona que o caminho indica).
+    expect(zones('docs/billing.mdx', [], 'other', ['docs/billing.mdx'])).toContain('zona marcada na config');
+  });
+
+  it('middleware que não é de login não é zona (caso real: serve-static do Hono)', () => {
+    expect(zones('src/middleware/serve-static/index.ts')).toEqual([]);
+    expect(zones('src/middleware/bearer-auth/index.ts')).toEqual(['login e permissões']);
   });
 
   it('aceita zonas da config', () => {

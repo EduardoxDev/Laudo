@@ -1,0 +1,5 @@
+{
+  "$comment": "Projetos JS/TS maduros e com testes. Cada commit da branch principal é um PR já revisado pelos mantenedores: o Laudo não deveria bloquear nenhum.",
+  "commitsPerRepo": 10,
+  "repos": ["sindresorhus/ky", "honojs/hono", "fastify/fastify", "expressjs/express", "colinhacks/zod"]
+}

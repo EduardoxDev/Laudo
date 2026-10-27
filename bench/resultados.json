@@ -1,0 +1,588 @@
+{
+  "date": "2026-10-27",
+  "version": "0.1.0",
+  "results": [
+    {
+      "repo": "sindresorhus/ky",
+      "sha": "3541888878c4d303a8bc2ad61815f4e048f55a5d",
+      "subject": "2.2.0",
+      "verdict": "pass",
+      "files": 1,
+      "ms": 624,
+      "findings": []
+    },
+    {
+      "repo": "sindresorhus/ky",
+      "sha": "242c32728a4be7eacfa08bca1ae0b209444f83d1",
+      "subject": "Let a `beforeRetry` hook change per-attempt options",
+      "verdict": "pass",
+      "files": 9,
+      "ms": 1390,
+      "findings": []
+    },
+    {
+      "repo": "sindresorhus/ky",
+      "sha": "d9ddb03b444cbb6c10601003ede9269f3885a665",
+      "subject": "Fix CI",
+      "verdict": "pass",
+      "files": 4,
+      "ms": 2232,
+      "findings": []
+    },
+    {
+      "repo": "sindresorhus/ky",
+      "sha": "d93adf85d1a992eb3b0390200c7d19e37d16b890",
+      "subject": "Run the browser tests and static checks once in CI",
+      "verdict": "review",
+      "files": 1,
+      "ms": 661,
+      "findings": [
+        {
+          "rule": "risk/sensitive-zone",
+          "level": "review",
+          "title": "Mudança em zona sensível: CI e deploy",
+          "file": ".github/workflows/main.yml"
+        }
+      ]
+    },
+    {
+      "repo": "sindresorhus/ky",
+      "sha": "a5ed57b1898d5eba75f1b0ffc8752518a75e0f07",
+      "subject": "Refactor",
+      "verdict": "pass",
+      "files": 33,
+      "ms": 7313,
+      "findings": []
+    },
+    {
+      "repo": "sindresorhus/ky",
+      "sha": "7f0137dc42bbebc8652649a8139065c0dd4dff0b",
+      "subject": "Report the sent request for a hook's response, and finish the cross-realm and `null` checks",
+      "verdict": "review",
+      "files": 11,
+      "ms": 3068,
+      "findings": [
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "1 teste removido do arquivo",
+          "file": "test/retry.ts"
+        }
+      ]
+    },
+    {
+      "repo": "sindresorhus/ky",
+      "sha": "13c8da559c940c4abd9c741a56ea4603c25a0383",
+      "subject": "Stop surfacing progress callback errors",
+      "verdict": "review",
+      "files": 11,
+      "ms": 2720,
+      "findings": [
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "2 testes removidos do arquivo",
+          "file": "test/context.ts"
+        },
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "1 teste removido do arquivo",
+          "file": "test/hooks.ts"
+        },
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "1 teste removido do arquivo",
+          "file": "test/response-size.ts"
+        },
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "6 testes removidos do arquivo",
+          "file": "test/stream.ts"
+        },
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "1 teste removido do arquivo",
+          "file": "test/type-guards.ts"
+        }
+      ]
+    },
+    {
+      "repo": "sindresorhus/ky",
+      "sha": "55599c89809c83bdae7f56b56ac8e2a5bd57b8d3",
+      "subject": "Run `beforeError` for a `beforeRetry` abort and share the body-wrapping check",
+      "verdict": "pass",
+      "files": 8,
+      "ms": 2036,
+      "findings": []
+    },
+    {
+      "repo": "sindresorhus/ky",
+      "sha": "3ded2aad45a1ef06eef5a91e3d853dd056376bf6",
+      "subject": "Tweaks",
+      "verdict": "review",
+      "files": 24,
+      "ms": 6049,
+      "findings": [
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "2 testes removidos do arquivo",
+          "file": "test/context.ts"
+        },
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "2 testes removidos do arquivo",
+          "file": "test/fetch.ts"
+        },
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "5 testes removidos do arquivo",
+          "file": "test/hooks.ts"
+        },
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "2 testes removidos do arquivo",
+          "file": "test/main.ts"
+        },
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "1 teste removido do arquivo",
+          "file": "test/validation.ts"
+        }
+      ]
+    },
+    {
+      "repo": "sindresorhus/ky",
+      "sha": "692c43575422c7251baea01ef4179100e0215e1b",
+      "subject": "Restore the retry-only marker condition and cover the remaining cases",
+      "verdict": "pass",
+      "files": 9,
+      "ms": 2892,
+      "findings": []
+    },
+    {
+      "repo": "honojs/hono",
+      "sha": "bac5c4a8bcd76b165428ce757e1185753c7935bd",
+      "subject": "4.13.14",
+      "verdict": "pass",
+      "files": 1,
+      "ms": 569,
+      "findings": []
+    },
+    {
+      "repo": "honojs/hono",
+      "sha": "eb78ecaabe26baa8addc053cf8a94b5b7603c001",
+      "subject": "fix(utils/url): preserve encoded duplicate query order (#5495)",
+      "verdict": "pass",
+      "files": 3,
+      "ms": 872,
+      "findings": []
+    },
+    {
+      "repo": "honojs/hono",
+      "sha": "06a45bc3a639c1f9eea28e16370bc03447f0d7cb",
+      "subject": "feat(bearer-auth): allow MessageFunction to return a Response (#5269)",
+      "verdict": "review",
+      "files": 2,
+      "ms": 703,
+      "findings": [
+        {
+          "rule": "risk/sensitive-zone",
+          "level": "review",
+          "title": "Mudança em zona sensível: login e permissões",
+          "file": "src/middleware/bearer-auth/index.ts"
+        }
+      ]
+    },
+    {
+      "repo": "honojs/hono",
+      "sha": "5ca49b0720755c585c9a9835f0a479ceea36fb52",
+      "subject": "fix(css): Fix multiline CSS handling in style replacement (#5405)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 689,
+      "findings": []
+    },
+    {
+      "repo": "honojs/hono",
+      "sha": "e9c01079a932ffdfa269c0011075ac43fd8a1035",
+      "subject": "fix(hono-base): disallow `getPath` when `strict` is `false` (#5563)",
+      "verdict": "pass",
+      "files": 3,
+      "ms": 1395,
+      "findings": []
+    },
+    {
+      "repo": "honojs/hono",
+      "sha": "08807ce12aa3aa27c8c5adf63e677bbab6bceda9",
+      "subject": "fix(trie-router): keep first value for duplicate path params (#5422) (#5423)",
+      "verdict": "pass",
+      "files": 5,
+      "ms": 1586,
+      "findings": []
+    },
+    {
+      "repo": "honojs/hono",
+      "sha": "e77c7c8eb9fea50a496ba10010063998b55d7a6b",
+      "subject": "fix(helper/route): match regex params in basePath() the same way as the router (#5498)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 556,
+      "findings": []
+    },
+    {
+      "repo": "honojs/hono",
+      "sha": "d54720da80134a180f5fe2dd98a7676cfc8f08b4",
+      "subject": "fix(serve-static): respect q-values in Accept-Encoding for precompressed files (#5436)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 603,
+      "findings": []
+    },
+    {
+      "repo": "honojs/hono",
+      "sha": "ae401f080004872678100e890fd3398d3df09e67",
+      "subject": "fix(css): keep the descendant combinator before a pseudo-class when minifying (#5451)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 642,
+      "findings": []
+    },
+    {
+      "repo": "honojs/hono",
+      "sha": "2013fed5b21719bb1e6f44ce7f49757660946856",
+      "subject": "fix(css): keep \"//\" inside an unquoted url() when minifying (#5450)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 599,
+      "findings": []
+    },
+    {
+      "repo": "fastify/fastify",
+      "sha": "5df959f3af698823dd582f1c3661f3e80df0b5da",
+      "subject": "docs: fix syntax errors in code examples (#7159)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 459,
+      "findings": []
+    },
+    {
+      "repo": "fastify/fastify",
+      "sha": "d40c30d2a68051a35c2ded4d4b2db114784e2d6c",
+      "subject": "docs: clarify that maxParamLength does not prevent ReDoS (#7140)",
+      "verdict": "pass",
+      "files": 1,
+      "ms": 455,
+      "findings": []
+    },
+    {
+      "repo": "fastify/fastify",
+      "sha": "2a64ae1627d78fe1f22fb021a7e5763581384473",
+      "subject": "fix(decorators): evaluate instance getters once in getDecorator (#7124)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 773,
+      "findings": []
+    },
+    {
+      "repo": "fastify/fastify",
+      "sha": "05869c5cca5964776fdb61230ac60c5fa297f593",
+      "subject": "perf(request): hoist port regex to module level (#7110)",
+      "verdict": "pass",
+      "files": 1,
+      "ms": 503,
+      "findings": []
+    },
+    {
+      "repo": "fastify/fastify",
+      "sha": "a122571bde10126da9cfa02591eecf2d1c8e0a52",
+      "subject": "docs(request): reorganize Request reference by properties and methods (#7147)",
+      "verdict": "pass",
+      "files": 1,
+      "ms": 567,
+      "findings": []
+    },
+    {
+      "repo": "fastify/fastify",
+      "sha": "1a012d3b22692a616d1e91a41a2f9127e9dba494",
+      "subject": "docs(reply): reorganize Reply reference by properties and methods (#7146)",
+      "verdict": "pass",
+      "files": 1,
+      "ms": 527,
+      "findings": []
+    },
+    {
+      "repo": "fastify/fastify",
+      "sha": "78d68b2225baa3b7e05ebb5522239f40a4bcf6e8",
+      "subject": "test: do not assert a HEAD response body through inject() (#7148)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 755,
+      "findings": []
+    },
+    {
+      "repo": "fastify/fastify",
+      "sha": "5c1f3935e43b35679c71ea7a65275a348d1efbd1",
+      "subject": "fix(types): add logSerializers to RouteShorthandOptions",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 775,
+      "findings": []
+    },
+    {
+      "repo": "fastify/fastify",
+      "sha": "ce41dc0fbb4ed75e9a42f3972ac896333f6a7396",
+      "subject": "fix(types): allow socket path strings in addresses (#6842)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 728,
+      "findings": []
+    },
+    {
+      "repo": "fastify/fastify",
+      "sha": "5d4c23352d90c2474bfaf1a0d530c86b699cb795",
+      "subject": "feat(hooks): support disposables in onClose hook (#7121)",
+      "verdict": "pass",
+      "files": 5,
+      "ms": 827,
+      "findings": []
+    },
+    {
+      "repo": "expressjs/express",
+      "sha": "1c6f1b0fe4000977b9a7b4f34097e4d527dd9824",
+      "subject": "test: expand coverage for request, response and view behavior (#7112)",
+      "verdict": "review",
+      "files": 9,
+      "ms": 1011,
+      "findings": [
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "1 teste removido do arquivo",
+          "file": "test/req.is.js"
+        }
+      ]
+    },
+    {
+      "repo": "expressjs/express",
+      "sha": "0dee2c52c7c873498f8ed7d8ee4ddd0a04d3ada8",
+      "subject": "docs: correct crossed names in the emeritus triagers list (#7529)",
+      "verdict": "pass",
+      "files": 1,
+      "ms": 458,
+      "findings": []
+    },
+    {
+      "repo": "expressjs/express",
+      "sha": "a419aa7350389a275ab45fde2e849ed1f02449ef",
+      "subject": "Revert \"build(deps-dev): bump supertest from 6.3.0 to 7.3.0 (#7494)\" (#7518)",
+      "verdict": "pass",
+      "files": 4,
+      "ms": 584,
+      "findings": []
+    },
+    {
+      "repo": "expressjs/express",
+      "sha": "6d2df035a95f3d1002be3e29997b7a4bfe976b5f",
+      "subject": "build(deps-dev): bump supertest from 6.3.0 to 7.3.0 (#7494)",
+      "verdict": "pass",
+      "files": 4,
+      "ms": 576,
+      "findings": []
+    },
+    {
+      "repo": "expressjs/express",
+      "sha": "cf6722bf89a86905281d9160b6482e08166b5ef0",
+      "subject": "5.3.0 (#7468)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 407,
+      "findings": []
+    },
+    {
+      "repo": "expressjs/express",
+      "sha": "8c2fcfcb7d37c9c2e89363b7b86a092768c3a8a3",
+      "subject": "docs: fix typos and a stale API reference in lib comments (#7512)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 755,
+      "findings": []
+    },
+    {
+      "repo": "expressjs/express",
+      "sha": "9efc29e280018dafc1f0617f3a3d28f4e463b7be",
+      "subject": "docs: fix pass-through typos (#7509)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 1536,
+      "findings": []
+    },
+    {
+      "repo": "expressjs/express",
+      "sha": "2717ae3cbf2bdc3f946d22ea6a4e0b5bd438b87b",
+      "subject": "build(deps): bump the github-actions group with 3 updates (#7499)",
+      "verdict": "review",
+      "files": 2,
+      "ms": 965,
+      "findings": [
+        {
+          "rule": "risk/sensitive-zone",
+          "level": "review",
+          "title": "Mudança em zona sensível: CI e deploy",
+          "file": ".github/workflows/codeql.yml"
+        }
+      ]
+    },
+    {
+      "repo": "expressjs/express",
+      "sha": "de777714df3fb1e81ac2d95f509c421478ab1e56",
+      "subject": "build(deps-dev): bump hbs from 4.3.0 to 4.3.1 (#7500)",
+      "verdict": "pass",
+      "files": 1,
+      "ms": 969,
+      "findings": []
+    },
+    {
+      "repo": "expressjs/express",
+      "sha": "9169cbe1127ed1f9bc4f80a70b82c412467dd156",
+      "subject": "docs: add missing apostrophe in example (#7483)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 576,
+      "findings": []
+    },
+    {
+      "repo": "colinhacks/zod",
+      "sha": "afdac65e0f80c0ccf9e8909da97c411567908b57",
+      "subject": "release: the approval summary tells the maintainer to run stager, not stager approve (#6675)",
+      "verdict": "review",
+      "files": 1,
+      "ms": 415,
+      "findings": [
+        {
+          "rule": "risk/sensitive-zone",
+          "level": "review",
+          "title": "Mudança em zona sensível: CI e deploy",
+          "file": ".github/workflows/release.yml"
+        }
+      ]
+    },
+    {
+      "repo": "colinhacks/zod",
+      "sha": "a66e69814daa34e098e290fe0899451197515fc5",
+      "subject": "release: tag before installing dependencies, and delete the key after the push (#6674)",
+      "verdict": "review",
+      "files": 1,
+      "ms": 382,
+      "findings": [
+        {
+          "rule": "risk/sensitive-zone",
+          "level": "review",
+          "title": "Mudança em zona sensível: CI e deploy",
+          "file": ".github/workflows/release.yml"
+        }
+      ]
+    },
+    {
+      "repo": "colinhacks/zod",
+      "sha": "f1ffdf555730f9b618c17a666962be8b81f7fb3c",
+      "subject": "release: only the approved release job can create a tag, and the dispatch carries the notes (#6672)",
+      "verdict": "review",
+      "files": 1,
+      "ms": 410,
+      "findings": [
+        {
+          "rule": "risk/sensitive-zone",
+          "level": "review",
+          "title": "Mudança em zona sensível: CI e deploy",
+          "file": ".github/workflows/release.yml"
+        }
+      ]
+    },
+    {
+      "repo": "colinhacks/zod",
+      "sha": "680d19f7d1e042e55934209caeb79bc843b94f44",
+      "subject": "fix(v4): report a union option that only checks rejected (#6662)",
+      "verdict": "pass",
+      "files": 2,
+      "ms": 1274,
+      "findings": []
+    },
+    {
+      "repo": "colinhacks/zod",
+      "sha": "40a5dba080b065cc430e5b0e64a8058d68c1660d",
+      "subject": "fix(locales): add Sizable.map to es, fr, he, hr and lt, and check Sizable parity from source (#6661)",
+      "verdict": "review",
+      "files": 7,
+      "ms": 814,
+      "findings": [
+        {
+          "rule": "tests/test-removed",
+          "level": "review",
+          "title": "1 teste removido do arquivo",
+          "file": "packages/zod/src/v4/core/tests/locales/parity.test.ts"
+        }
+      ]
+    },
+    {
+      "repo": "colinhacks/zod",
+      "sha": "311cd74b2765ff7c7b58add60e37c5a0ea7a1972",
+      "subject": "fix(v4): run a record's key schema on an own __proto__ key (#6660)",
+      "verdict": "pass",
+      "files": 4,
+      "ms": 2108,
+      "findings": []
+    },
+    {
+      "repo": "colinhacks/zod",
+      "sha": "b500a2ee95134f81d74da7911d7378dd2853d042",
+      "subject": "4.6.7",
+      "verdict": "pass",
+      "files": 6,
+      "ms": 1096,
+      "findings": []
+    },
+    {
+      "repo": "colinhacks/zod",
+      "sha": "9c219833c3a3764fa1f1ea9c5ecec8254a63c0b1",
+      "subject": "ci: stage at verbose so a failed OIDC token exchange says why",
+      "verdict": "review",
+      "files": 1,
+      "ms": 431,
+      "findings": [
+        {
+          "rule": "risk/sensitive-zone",
+          "level": "review",
+          "title": "Mudança em zona sensível: CI e deploy",
+          "file": ".github/scripts/npm-stage-publish.sh"
+        }
+      ]
+    },
+    {
+      "repo": "colinhacks/zod",
+      "sha": "529f78dd9431b07f49647fee3aa0819b3f8b66b7",
+      "subject": "4.6.6",
+      "verdict": "pass",
+      "files": 6,
+      "ms": 626,
+      "findings": []
+    },
+    {
+      "repo": "colinhacks/zod",
+      "sha": "a0ebf970f2d752e5f58527cd2942ff48be4f46bd",
+      "subject": "fix(v4): check array, set and map size bounds before parsing elements (#6652)",
+      "verdict": "pass",
+      "files": 6,
+      "ms": 1848,
+      "findings": []
+    }
+  ]
+}

@@ -18,7 +18,8 @@ export const ZONES: readonly Zone[] = [
   {
     id: 'auth',
     label: 'login e permissões',
-    path: seg('auth|authn|authz|login|logout|signin|signup|session|sessions|oauth|sso|passport|jwt|permissions?|rbac|acl|middleware'),
+    // Sem "middleware": em frameworks como Hono e Express quase todo middleware é outra coisa (estáticos, CORS, log).
+    path: seg('auth|authn|authz|login|logout|signin|signup|session|sessions|oauth|sso|passport|jwt|permissions?|rbac|acl'),
     content: /\b(jwt\.(sign|verify)|bcrypt|argon2|passport\.\w+|getServerSession|httpOnly|sameSite|isAdmin|hasRole|hasPermission|authorize)\b/,
   },
   {
@@ -55,17 +56,21 @@ export const ZONES: readonly Zone[] = [
 
 const CUSTOM_LABEL = 'zona marcada na config';
 
-/** Zonas sensíveis que a mudança neste arquivo toca. Testes e snapshots não contam. */
+/** Documentação fala de migração, login e hash sem mexer em nada disso (medido no bench). */
+const DOCS = /\.(md|mdx|markdown|txt|rst|adoc)$|(^|\/)docs?\//i;
+
+/** Zonas sensíveis que a mudança neste arquivo toca. Testes, snapshots e documentação não contam. */
 export function zonesFor(file: ChangedFile, lines: ChangedLines, customGlobs: readonly string[]): string[] {
-  if (file.kind === 'test' || file.kind === 'snapshot') return [];
-  const changed = [...lines.added, ...lines.removed];
   const paths = [file.path, ...(file.oldPath ? [file.oldPath] : [])];
+  const custom = customGlobs.length > 0 && paths.some((p) => matchesAny(p, customGlobs));
+  if (file.kind === 'test' || file.kind === 'snapshot' || (DOCS.test(file.path) && !custom)) return [];
+  const changed = [...lines.added, ...lines.removed];
   const out: string[] = [];
   for (const zone of ZONES) {
     const byPath = zone.path && paths.some((p) => zone.path!.test(p));
     const byContent = zone.content && changed.some((l) => zone.content!.test(l));
     if (byPath || byContent) out.push(zone.label);
   }
-  if (customGlobs.length > 0 && paths.some((p) => matchesAny(p, customGlobs))) out.push(CUSTOM_LABEL);
+  if (custom) out.push(CUSTOM_LABEL);
   return out;
 }
