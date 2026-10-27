@@ -1,5 +1,14 @@
 # Changelog
 
+## Ainda não lançado
+
+### Corrigido
+
+- `laudo --help` e `laudo --version` não mostravam nada no terminal do Windows: a saída é assíncrona lá, e o processo era encerrado antes de ela chegar à tela.
+- Opção desconhecida na CLI agora sai com o código 3 (erro do Laudo), e não 1, que quer dizer "revisar".
+- O selo do veredito ficou alinhado com as linhas de baixo no cabeçalho.
+- Testes: o repositório temporário relê os arquivos pelo conteúdo, o que corrige falsos erros no CI em Windows ("racy git").
+
 ## 0.2.0 (2026-10-27)
 
 ### Novo

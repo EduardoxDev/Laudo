@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Command, Option } from 'commander';
+import { Command, CommanderError, Option } from 'commander';
 import pc from 'picocolors';
 import {
   CATEGORIES,
@@ -38,10 +38,14 @@ const program = new Command()
   .version(VERSION)
   .option('--no-color', 'saída sem cores')
   .showSuggestionAfterError()
+  // No Windows o terminal recebe a saída de forma assíncrona, e o commander chamava process.exit()
+  // logo depois do --help e do --version: o texto se perdia. Com exitOverride, ele lança um erro
+  // (tratado no fim do arquivo) e o processo termina sozinho, depois de escrever tudo.
+  .exitOverride()
   .addHelpText('beforeAll', () =>
     process.stdout.isTTY
       ? `\n${mascot('idle', pc)
-          .map((l, i) => `${l}${[pc.bold(`Laudo ${VERSION}`), pc.dim('Dá para confiar no que a IA mudou?'), pc.dim(`${MASCOT_NAME}: eu examino o diff e dou o veredito.`)][i] ?? ''}`.trimEnd())
+          .map((l, i) => `${l}${['', '', pc.bold(`Laudo ${VERSION}`), pc.dim('Dá para confiar no que a IA mudou?'), '', pc.dim(`${MASCOT_NAME}: eu examino o diff e dou o veredito.`)][i] ?? ''}`.trimEnd())
           .join('\n')}\n`
       : '',
   );
@@ -214,4 +218,10 @@ function fail(err: unknown): void {
   process.exitCode = EXIT_ERROR;
 }
 
-await program.parseAsync();
+try {
+  await program.parseAsync();
+} catch (err) {
+  if (!(err instanceof CommanderError)) throw err;
+  // --help e --version saem com 0; opção errada já foi explicada no stderr e é erro de uso (3, não 1 = "revisar").
+  process.exitCode = err.exitCode === 0 ? 0 : EXIT_ERROR;
+}

@@ -111,7 +111,7 @@ describe('renderTerminal', () => {
     const out = plain(report()).split('\n');
     expect(out.slice(1, 9)).toEqual([
       '',
-      '    .-"""-.              ✖ BLOQUEADO   1 problema',
+      '    .-"""-.             ✖ BLOQUEADO   1 problema',
       '   /       \\            laudo 0.1.0 · main (aaaaaaa) → HEAD (bbbbbbb)',
       '  |  ◣ _ ◢  |           3 arquivos · 4,2 s',
       '   \\       /',
@@ -124,7 +124,7 @@ describe('renderTerminal', () => {
   it('sem a Lupa (--no-mascot ou terminal estreito), o cabeçalho fica só com o texto', () => {
     for (const opts of [{ mascot: false }, { width: 64 }]) {
       const out = plain(report(), opts).split('\n');
-      expect(out[1]).toBe('  ✖ BLOQUEADO   1 problema');
+      expect(out[1]).toBe(' ✖ BLOQUEADO   1 problema');
       expect(out.join('\n')).not.toContain('.-"""-.');
     }
   });

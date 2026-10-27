@@ -45,7 +45,8 @@ export function renderTerminal(report: Report, opts: TerminalOptions = {}): stri
   const withMascot = opts.mascot !== false && width >= MASCOT_MIN_WIDTH;
   const room = width - (withMascot ? MASCOT_WIDTH : 0);
   const head = meta.head === 'WORKTREE' ? 'pasta de trabalho' : `HEAD ${c.dim(`(${short(meta.head)})`)}`;
-  const text = [` ${badge(c, report.verdict)}  ${c.bold(findingSummary(report))}`];
+  // O selo já tem um espaço por dentro; sem margem, o fundo dele começa na mesma coluna das linhas de baixo.
+  const text = [`${badge(c, report.verdict)}  ${c.bold(findingSummary(report))}`];
   const where = ` ${c.dim(`laudo ${meta.version} ·`)} ${meta.baseRef} ${c.dim(`(${short(meta.base)})`)} ${c.dim('→')} ${head}`;
   const stats = c.dim(`${plural(meta.filesChanged, 'arquivo', 'arquivos')} · ${seconds(meta.durationMs)}`);
   if (visible(`${where} · ${stats}`).length <= room) text.push(`${where} ${c.dim('·')} ${stats}`);
