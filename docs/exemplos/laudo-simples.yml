@@ -1,0 +1,27 @@
+# Uso simples: um job analisa e comenta.
+# Serve para repositórios em que os PRs vêm de branches do próprio repositório.
+# Em PR de fork o token é só de leitura: o laudo sai no resumo do job, sem comentário.
+# Para comentar também em PRs de fork, use laudo-analise.yml + laudo-comentario.yml.
+name: Laudo
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write # comentar no PR
+  security-events: write # enviar o SARIF para "Code scanning"
+
+jobs:
+  laudo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # o Laudo precisa do commit da base
+      - uses: EduardoxDev/Laudo@v0
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('laudo.sarif') != ''
+        with:
+          sarif_file: laudo.sarif
+          category: laudo

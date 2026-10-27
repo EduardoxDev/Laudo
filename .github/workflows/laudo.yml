@@ -1,0 +1,25 @@
+# O Laudo analisando os PRs do próprio Laudo (usa a Action desta mesma versão do código).
+name: Laudo
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  laudo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./
+        id: laudo
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('laudo.sarif') != ''
+        with:
+          sarif_file: laudo.sarif
+          category: laudo

@@ -214,20 +214,22 @@ laudo explain <regra>        # explica uma regra, com exemplo de antes e depois
 
 ## 7. GitHub Action
 
-Fluxo com dois workflows, para ser seguro em PRs de forks:
+`action.yml` fica na raiz (`uses: EduardoxDev/Laudo@v0`) e roda em `node24`; o `node20` foi removido das Actions em 23/09/2026. O código está em `packages/action/` e vira um arquivo único com o esbuild (`dist/index.cjs`, sem minificar, versionado no git). O CI confere se o bundle está atualizado. A Action não usa `@actions/*`: lê as entradas de `INPUT_*`, grava em `GITHUB_OUTPUT` e `GITHUB_STEP_SUMMARY` e chama a API REST com `fetch`.
+
+Três modos:
 
 ```
-pull_request (sem segredos, token só leitura)
-  └─ job "analisar": checkout com fetch-depth 0 → laudo check --format json → upload do artefato laudo.json
-
-workflow_run (quando "analisar" termina; tem permissão de escrita)
-  └─ job "comentar": baixa laudo.json → renderiza markdown → cria ou atualiza o comentário marcado
-                     → publica SARIF → define o status do check
+single   (pull_request)  analisa → grava laudo-report.json e laudo.sarif → resumo do job → comentário único → falha se bloqueado
+analyze  (pull_request)  igual, sem comentário; o workflow sobe laudo-report.json como artefato
+comment  (workflow_run)  baixa o artefato → valida → confere o PR na API → comentário único
 ```
 
-- O job que **executa o código do PR** (testes e mutação rodam código do PR) **nunca** tem segredos nem token de escrita.
-- O job que **escreve no PR** nunca faz checkout nem executa código do PR; ele só lê o JSON (validado com zod antes de usar).
-- Para repositórios sem forks, há um modo simples num único job (`mode: single`).
+- **Artefato** (`envelope.ts`): `{ artifactVersion: 1, pr: { number, headSha }, report }`. É validado com zod (`ReportSchema`), com tamanho máximo em todo texto e lista. O schema é conferido na compilação contra o tipo `Report`, para os dois nunca divergirem.
+- **Por que conferir o PR:** no evento `pull_request`, o próprio workflow vem do PR, então um fork pode reescrever o artefato como quiser. O modo `comment` só comenta se (1) o `headSha` do artefato for o `workflow_run.head_sha` e (2) o PR indicado, lido na API, estiver nesse mesmo commit. Sem isso, um fork poderia publicar um laudo falso no PR de outra pessoa.
+- **Comentário único** (`comment.ts`): procura um comentário com `<!-- laudo:report -->` **e** feito pelo `comment-author` (padrão `github-actions[bot]`); atualiza se achar, cria se não. Um humano que colar o marcador não tem o comentário editado.
+- **Token só de leitura** (PR de fork no modo `single`): o 403 vira aviso, o laudo fica no resumo do job e o veredito continua valendo.
+- O job que **executa o código do PR** nunca tem segredos nem token de escrita; o job que **escreve no PR** nunca faz checkout. Isso importa a partir da fatia 5, quando a mutação vai rodar os testes do PR.
+- **SARIF** (`render/sarif.ts`): 2.1.0, com as regras do catálogo (`rules.ts`), `partialFingerprints` igual ao id do achado (o mesmo alerta entre pushes) e só achados com arquivo, porque o GitHub exige localização. O envio fica com `github/codeql-action/upload-sarif@v4` no workflow.
 
 ## 8. Segurança e privacidade
 

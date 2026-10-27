@@ -1,0 +1,26 @@
+# Parte 1 de 2 (seguro para PRs de fork): analisa o PR SEM permissão de escrita e SEM segredos.
+# O relatório vira um artefato; quem comenta é o laudo-comentario.yml.
+name: Laudo (análise)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  analisar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: EduardoxDev/Laudo@v0
+        with:
+          mode: analyze
+      - uses: actions/upload-artifact@v7
+        if: always() && hashFiles('laudo-report.json') != ''
+        with:
+          name: laudo-report
+          path: laudo-report.json
+          retention-days: 7

@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Bundle da Action está atualizado
+        run: |
+          node packages/action/build.mjs
+          git diff --exit-code packages/action/dist || (echo "::error::Rode 'node packages/action/build.mjs' e commite packages/action/dist." && exit 1)

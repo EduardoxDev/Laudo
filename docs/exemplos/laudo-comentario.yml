@@ -1,0 +1,27 @@
+# Parte 2 de 2 (seguro para PRs de fork): roda com permissão de escrita, mas NUNCA faz checkout
+# nem executa código do PR. Só lê o relatório da análise, valida o formato, confere na API que ele
+# é mesmo do PR e do commit analisados, e publica ou atualiza o comentário único.
+name: Laudo (comentário)
+
+on:
+  workflow_run:
+    workflows: ['Laudo (análise)']
+    types: [completed]
+
+permissions:
+  pull-requests: write
+  actions: read # baixar o artefato da outra execução
+
+jobs:
+  comentar:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: laudo-report
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      - uses: EduardoxDev/Laudo@v0
+        with:
+          mode: comment

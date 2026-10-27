@@ -6,6 +6,7 @@ import {
   GitError,
   renderJson,
   renderMarkdown,
+  renderSarif,
   renderTerminal,
   runLaudo,
   VERSION,
@@ -16,6 +17,7 @@ const FORMATS = {
   terminal: renderTerminal,
   markdown: renderMarkdown,
   json: renderJson,
+  sarif: renderSarif,
 } satisfies Record<string, (report: Report) => string>;
 type Format = keyof typeof FORMATS;
 

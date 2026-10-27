@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    // Só para checar tipos; o arquivo que a Action roda é o bundle do esbuild em dist/.
+    "outDir": "lib"
+  },
+  "include": ["src"],
+  "references": [{ "path": "../core" }]
+}

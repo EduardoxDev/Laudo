@@ -1,0 +1,52 @@
+name: Laudo
+description: Verifica se dá para confiar nas mudanças feitas por agentes de IA, com um comentário único no PR e SARIF.
+author: Eduardo Maciel Wanka
+branding:
+  icon: check-circle
+  color: gray-dark
+
+inputs:
+  mode:
+    description: >-
+      single: analisa e comenta no mesmo job (repositórios sem PRs de fork).
+      analyze: só analisa e grava o relatório (job sem permissão de escrita).
+      comment: lê o relatório de um job analyze e comenta (workflow_run, nunca roda código do PR).
+    default: single
+  token:
+    description: Token para comentar no PR.
+    default: ${{ github.token }}
+  base:
+    description: Ref ou sha da base. Padrão, a base do pull request.
+    default: ''
+  fail-on:
+    description: A partir de qual veredito o job falha (block, review ou never). Padrão, o failOn do laudo.config.json.
+    default: ''
+  comment:
+    description: No modo single, publica o comentário no PR.
+    default: 'true'
+  comment-author:
+    description: Login de quem publica o comentário; só comentários dele com o marcador do Laudo são atualizados.
+    default: github-actions[bot]
+  working-directory:
+    description: Pasta do repositório.
+    default: .
+  report-path:
+    description: Onde gravar (analyze, single) ou ler (comment) o relatório em JSON.
+    default: laudo-report.json
+  sarif-path:
+    description: Onde gravar o SARIF.
+    default: laudo.sarif
+
+outputs:
+  verdict:
+    description: pass, review ou block.
+  findings:
+    description: Quantidade de achados.
+  report-path:
+    description: Caminho do relatório em JSON.
+  sarif-path:
+    description: Caminho do SARIF.
+
+runs:
+  using: node24
+  main: packages/action/dist/index.cjs

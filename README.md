@@ -2,7 +2,7 @@
 
 Verifica se dá para confiar nas mudanças feitas por agentes de IA. Ele não escreve código nem dá opinião: junta evidências e dá um veredito (✔ aprovado, ● revisar, ✖ bloqueado).
 
-> Status: **fatia 3 de 6**. Já funcionam a integridade dos testes, a checagem de dependências novas e o mapa de risco, com saída no terminal, em markdown (para comentário de PR) e em JSON. Veja a [especificação](docs/ESPECIFICACAO.md) e a [arquitetura](docs/ARQUITETURA.md).
+> Status: **fatia 4 de 6**. Já funcionam a integridade dos testes, a checagem de dependências novas, o mapa de risco e a GitHub Action, com comentário único no PR e SARIF. Veja a [especificação](docs/ESPECIFICACAO.md) e a [arquitetura](docs/ARQUITETURA.md).
 
 ```
 ✖ BLOQUEADO  3 problemas · 1 ponto para revisar
@@ -69,7 +69,50 @@ Por onde revisar: 26 linhas em 5 arquivos · 10 linhas triviais escondidas (1 ar
 - **Mudanças triviais**, escondidas do plano: só formatação ou comentários, só renomeação de variáveis locais, só a ordem dos imports, arquivo só movido, lockfile. A comparação é pelo AST. Renomear algo **exportado**, trocar o nome de uma propriedade ou adicionar um import **não** conta como trivial.
 - **Ordem:** zonas sensíveis primeiro, depois código, CI, config, testes e o resto; dentro de cada grupo, o maior primeiro.
 
-## Como usar
+## GitHub Action
+
+```yaml
+# .github/workflows/laudo.yml
+name: Laudo
+on: pull_request
+permissions:
+  contents: read
+  pull-requests: write # comentar no PR
+  security-events: write # SARIF em "Code scanning"
+jobs:
+  laudo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # o Laudo precisa do commit da base
+      - uses: EduardoxDev/Laudo@v0
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('laudo.sarif') != ''
+        with:
+          sarif_file: laudo.sarif
+          category: laudo
+```
+
+A cada push no PR, o Laudo **atualiza o mesmo comentário** em vez de criar outro. O laudo também aparece no resumo do job, e os achados vão para a aba "Code scanning". O job falha quando o veredito é bloqueado (`fail-on` muda isso).
+
+**PRs de fork:** neles o GitHub dá ao workflow um token só de leitura. O modo simples então mostra o laudo no resumo do job, mas não comenta. Para comentar também nesses PRs, use os dois workflows de [docs/exemplos/](docs/exemplos/):
+- [`laudo-analise.yml`](docs/exemplos/laudo-analise.yml) roda no PR **sem** permissão de escrita e sem segredos, e guarda o relatório como artefato.
+- [`laudo-comentario.yml`](docs/exemplos/laudo-comentario.yml) roda depois, com permissão de escrita, mas **nunca** baixa nem executa o código do PR. Ele valida o relatório e confere na API do GitHub que ele é mesmo do PR e do commit analisados. Só então comenta.
+
+| Entrada | Padrão | O quê |
+|---|---|---|
+| `mode` | `single` | `single` (analisa e comenta), `analyze` (só analisa) ou `comment` (só comenta, em `workflow_run`) |
+| `fail-on` | `failOn` da config (`block`) | `block`, `review` ou `never` |
+| `base` | base do PR | ref ou sha da base, para rodar fora de PR |
+| `comment` | `true` | no modo `single`, publica o comentário |
+| `comment-author` | `github-actions[bot]` | só comentários desse autor são atualizados (troque se usar outro token) |
+| `working-directory` | `.` | pasta do repositório |
+| `report-path` / `sarif-path` | `laudo-report.json` / `laudo.sarif` | onde gravar os arquivos |
+
+Saídas: `verdict` (`pass`, `review` ou `block`), `findings`, `report-path` e `sarif-path`.
+
+## Como usar a CLI
 
 ```bash
 npm install
@@ -83,6 +126,7 @@ Opções do `laudo check`:
 - `--worktree`: inclui mudanças não commitadas.
 - `--format markdown`: comentário pronto para PR. O que vem do diff é escapado, então não vira HTML, link nem menção a `@alguém`. O texto respeita o limite de tamanho do GitHub e termina com o marcador `<!-- laudo:report -->`.
 - `--format json`: o relatório completo, com `schemaVersion: 1`.
+- `--format sarif`: SARIF 2.1.0, para outras ferramentas de code scanning.
 - `--fail-on block|review|never`: a partir de qual veredito o comando falha.
 
 Códigos de saída: `0` aprovado · `1` revisar · `2` bloqueado · `3` erro do Laudo. Por padrão, só o bloqueado falha.
@@ -93,5 +137,7 @@ Códigos de saída: `0` aprovado · `1` revisar · `2` bloqueado · `3` erro do 
 npm test            # unitários + corpo de PRs em fixtures/
 npm run typecheck
 ```
+
+Mudou algo que a Action usa? Rode `node packages/action/build.mjs` e commite `packages/action/dist/`. O CI confere se o bundle está atualizado.
 
 Cada caso em `fixtures/` vira um repositório git temporário com dois commits. O resultado é comparado com `fixtures/cases.json`. Toda regra nova entra com o seu caso.
