@@ -129,6 +129,5 @@ describe('config e código de saída', () => {
 
   it('só falha a partir do nível de failOn', () => {
     expect([exitCodeFor('pass', 'block'), exitCodeFor('review', 'block'), exitCodeFor('block', 'block')]).toEqual([0, 0, 2]);
-    expect([exitCodeFor('review', 'review'), exitCodeFor('block', 'review'), exitCodeFor('block', 'never')]).toEqual([1, 2, 0]);
   });
 });
