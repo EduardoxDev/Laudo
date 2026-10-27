@@ -36,6 +36,10 @@ export function createRepo(beforeDirs: string[], afterDir: string | null, remove
 
   if (afterDir && existsSync(afterDir)) cpSync(afterDir, dir, { recursive: true });
   for (const file of remove) rmSync(join(dir, file));
+  // O "depois" é gravado milissegundos depois do commit da base. Em disco com relógio grosso
+  // (o runner Windows do GitHub), um arquivo do mesmo tamanho parece intocado para o git
+  // ("racy git": `90` → `95` sumia do diff). Sem o índice, o git relê tudo pelo conteúdo.
+  gitIn(dir, 'rm', '-r', '-q', '--cached', '--ignore-unmatch', '.');
   gitIn(dir, 'add', '-A');
   gitIn(dir, 'commit', '--quiet', '--allow-empty', '-m', 'head');
 
