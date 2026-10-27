@@ -1,5 +1,5 @@
 import type { Finding, Level, Report } from '../types.js';
-import { findingSummary, KIND_LABEL, mutationLine, plural, planSummary, seconds, short, TRIVIAL_LABEL } from './common.js';
+import { agentLine, findingSummary, KIND_LABEL, mutationLine, plural, planSummary, seconds, short, TRIVIAL_LABEL } from './common.js';
 
 /** Marcador invisível que a Action usa para achar e atualizar o próprio comentário. */
 export const REPORT_MARKER = '<!-- laudo:report -->';
@@ -32,6 +32,8 @@ export function renderMarkdown(report: Report, opts: MarkdownOptions = {}): stri
   if (plan) head.push(`**Por onde revisar:** ${plan}`, '');
   const mutation = mutationLine(report);
   if (mutation) head.push(`**Mutação:** ${mutation}`, '');
+  const agent = agentLine(report);
+  if (agent) head.push(`**Sessão do agente (Claude Code):** ${agent}`, '');
 
   for (const level of ['block', 'review'] as const) {
     const list = report.findings.filter((f) => f.level === level);

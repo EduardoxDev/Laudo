@@ -1,6 +1,6 @@
 {
   "name": "@laudo/action",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "GitHub Action do Laudo: analisa o PR, publica um comentário único e gera SARIF.",
   "license": "MIT",
@@ -9,7 +9,7 @@
     "bundle": "node build.mjs"
   },
   "dependencies": {
-    "@laudo/core": "0.1.0",
+    "@laudo/core": "0.2.0",
     "zod": "4.6.6"
   }
 }

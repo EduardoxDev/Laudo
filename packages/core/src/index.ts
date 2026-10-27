@@ -10,12 +10,25 @@ export { evaluateDependency, resolveVersion, type DepFacts } from './analyzers/d
 export { NpmRegistry, RegistryError, type PackageInfo, type RegistryClient } from './analyzers/deps/registry.js';
 export { FileCache, MemoryCache, type Cache } from './analyzers/deps/cache.js';
 export { computeVerdict, exitCodeFor } from './verdict.js';
-export { renderTerminal } from './render/terminal.js';
+export { highlight, renderTerminal, type TerminalOptions } from './render/terminal.js';
+export { FACES, mascot, MASCOT_NAME, mascotPixels, mascotSays, pixelsToAnsi, xterm256Hex, type Mood, type Pixels } from './render/mascot.js';
+export { diagnose, type Check } from './doctor.js';
 export { renderMarkdown, REPORT_MARKER, type MarkdownOptions } from './render/markdown.js';
 export { renderJson } from './render/json.js';
 export { renderSarif } from './render/sarif.js';
 export { parseReport, ReportSchema } from './report-schema.js';
-export { RULES, RULES_URL, type RuleId, type RuleInfo } from './rules.js';
+export { CATEGORIES, categoryOf, RULES, RULES_URL, type Category, type RuleId, type RuleInfo } from './rules.js';
+export { agentFindings, summarize as summarizeSession } from './analyzers/agent/index.js';
+export {
+  claudeProjectsDir,
+  findClaudeSession,
+  loadClaudeSession,
+  parseClaudeSession,
+  repoPath,
+  type AgentEvent,
+  type AgentSession,
+} from './analyzers/agent/transcript.js';
+export { initProject, type InitResult } from './init.js';
 export { trivialKind } from './analyzers/risk-map/trivial.js';
 export { zonesFor, ZONES } from './analyzers/risk-map/zones.js';
 export { coverageLowered, coverageThresholds } from './analyzers/ci-integrity/coverage.js';

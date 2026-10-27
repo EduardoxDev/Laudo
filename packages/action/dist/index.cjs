@@ -16619,78 +16619,6 @@ var require_lib = __commonJS({
   }
 });
 
-// node_modules/picocolors/picocolors.js
-var require_picocolors = __commonJS({
-  "node_modules/picocolors/picocolors.js"(exports2, module2) {
-    var p = process || {};
-    var argv = p.argv || [];
-    var env = p.env || {};
-    var isColorSupported = !(!!env.NO_COLOR || argv.includes("--no-color")) && (!!env.FORCE_COLOR || argv.includes("--color") || p.platform === "win32" || (p.stdout || {}).isTTY && env.TERM !== "dumb" || !!env.CI);
-    var formatter = (open2, close, replace = open2) => (input2) => {
-      let string4 = "" + input2, index = string4.indexOf(close, open2.length);
-      return ~index ? open2 + replaceClose(string4, close, replace, index) + close : open2 + string4 + close;
-    };
-    var replaceClose = (string4, close, replace, index) => {
-      let result2 = "", cursor = 0;
-      do {
-        result2 += string4.substring(cursor, index) + replace;
-        cursor = index + close.length;
-        index = string4.indexOf(close, cursor);
-      } while (~index);
-      return result2 + string4.substring(cursor);
-    };
-    var createColors = (enabled = isColorSupported) => {
-      let f = enabled ? formatter : () => String;
-      return {
-        isColorSupported: enabled,
-        reset: f("\x1B[0m", "\x1B[0m"),
-        bold: f("\x1B[1m", "\x1B[22m", "\x1B[22m\x1B[1m"),
-        dim: f("\x1B[2m", "\x1B[22m", "\x1B[22m\x1B[2m"),
-        italic: f("\x1B[3m", "\x1B[23m"),
-        underline: f("\x1B[4m", "\x1B[24m"),
-        inverse: f("\x1B[7m", "\x1B[27m"),
-        hidden: f("\x1B[8m", "\x1B[28m"),
-        strikethrough: f("\x1B[9m", "\x1B[29m"),
-        black: f("\x1B[30m", "\x1B[39m"),
-        red: f("\x1B[31m", "\x1B[39m"),
-        green: f("\x1B[32m", "\x1B[39m"),
-        yellow: f("\x1B[33m", "\x1B[39m"),
-        blue: f("\x1B[34m", "\x1B[39m"),
-        magenta: f("\x1B[35m", "\x1B[39m"),
-        cyan: f("\x1B[36m", "\x1B[39m"),
-        white: f("\x1B[37m", "\x1B[39m"),
-        gray: f("\x1B[90m", "\x1B[39m"),
-        bgBlack: f("\x1B[40m", "\x1B[49m"),
-        bgRed: f("\x1B[41m", "\x1B[49m"),
-        bgGreen: f("\x1B[42m", "\x1B[49m"),
-        bgYellow: f("\x1B[43m", "\x1B[49m"),
-        bgBlue: f("\x1B[44m", "\x1B[49m"),
-        bgMagenta: f("\x1B[45m", "\x1B[49m"),
-        bgCyan: f("\x1B[46m", "\x1B[49m"),
-        bgWhite: f("\x1B[47m", "\x1B[49m"),
-        blackBright: f("\x1B[90m", "\x1B[39m"),
-        redBright: f("\x1B[91m", "\x1B[39m"),
-        greenBright: f("\x1B[92m", "\x1B[39m"),
-        yellowBright: f("\x1B[93m", "\x1B[39m"),
-        blueBright: f("\x1B[94m", "\x1B[39m"),
-        magentaBright: f("\x1B[95m", "\x1B[39m"),
-        cyanBright: f("\x1B[96m", "\x1B[39m"),
-        whiteBright: f("\x1B[97m", "\x1B[39m"),
-        bgBlackBright: f("\x1B[100m", "\x1B[49m"),
-        bgRedBright: f("\x1B[101m", "\x1B[49m"),
-        bgGreenBright: f("\x1B[102m", "\x1B[49m"),
-        bgYellowBright: f("\x1B[103m", "\x1B[49m"),
-        bgBlueBright: f("\x1B[104m", "\x1B[49m"),
-        bgMagentaBright: f("\x1B[105m", "\x1B[49m"),
-        bgCyanBright: f("\x1B[106m", "\x1B[49m"),
-        bgWhiteBright: f("\x1B[107m", "\x1B[49m")
-      };
-    };
-    module2.exports = createColors();
-    module2.exports.createColors = createColors;
-  }
-});
-
 // packages/action/src/io.ts
 var import_node_fs = require("node:fs");
 var ActionIO = class {
@@ -16751,7 +16679,7 @@ function escapeCommand(s) {
 
 // packages/action/src/run.ts
 var import_node_fs5 = require("node:fs");
-var import_node_path10 = require("node:path");
+var import_node_path11 = require("node:path");
 
 // packages/core/dist/run.js
 var import_node_crypto = require("node:crypto");
@@ -50947,6 +50875,11 @@ async function collectChangeSet(opts) {
   const relevant = entries.filter((e) => !e.path.startsWith(`${LAUDO_DIR}/`) && !matchesAny(e.path, config2.ignore));
   const ctx = { root, base, head: headSha, worktree: !!opts.worktree, config: config2, hunks };
   const files = await mapLimit(relevant, READ_CONCURRENCY, (e) => buildFile(e, ctx));
+  for (const path of await generatedPaths(root, files.map((f) => f.path))) {
+    const file2 = files.find((f) => f.path === path);
+    if (file2)
+      file2.generated = true;
+  }
   return {
     root,
     baseRef,
@@ -51005,6 +50938,21 @@ function checkContent(text2) {
   if (text2.includes("\0"))
     return { skipped: "binary" };
   return { text: text2 };
+}
+var ATTR_CHUNK = 500;
+async function generatedPaths(root, paths) {
+  const out = [];
+  for (let i = 0; i < paths.length; i += ATTR_CHUNK) {
+    const res = await tryGit(root, ["check-attr", "-z", "linguist-generated", "--", ...paths.slice(i, i + ATTR_CHUNK)]);
+    if (res === null)
+      continue;
+    const parts = res.split("\0");
+    for (let j = 0; j + 2 < parts.length; j += 3) {
+      if (parts[j + 2] === "set" || parts[j + 2] === "true")
+        out.push(parts[j]);
+    }
+  }
+  return out;
 }
 async function workspacePackages(root) {
   const out = await git(root, ["ls-files", "-z", "--", "*package.json"]);
@@ -51282,7 +51230,9 @@ function lineCounts(file2) {
 }
 
 // packages/core/dist/analyzers/risk-map/trivial.js
-var GENERATED = /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|Cargo\.lock|poetry\.lock|composer\.lock)$/;
+var GENERATED = /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|Cargo\.lock|poetry\.lock|composer\.lock)$|\.min\.(js|css)$|\.(js|css)\.map$/;
+var GENERATED_MARK = /@generated\b|\bDO NOT EDIT\b|\bCode generated by\b|\bauto-?generated\b/i;
+var MARK_LINES = 5;
 var NOISE = /* @__PURE__ */ new Set([
   "loc",
   "start",
@@ -51297,8 +51247,10 @@ var NOISE = /* @__PURE__ */ new Set([
   "innerComments"
 ]);
 function trivialKind(file2) {
-  if (GENERATED.test(file2.path))
+  if (file2.generated || GENERATED.test(file2.path) || hasGeneratedMark(file2.after))
     return "generated";
+  if (file2.skipped)
+    return null;
   if (file2.before === null || file2.after === null)
     return null;
   if (file2.before === file2.after)
@@ -51316,6 +51268,9 @@ function trivialKind(file2) {
   if (sameButImportOrder(before.program, after.program))
     return "imports";
   return null;
+}
+function hasGeneratedMark(text2) {
+  return text2 !== null && GENERATED_MARK.test(text2.split("\n", MARK_LINES).join("\n"));
 }
 function squash2(text2) {
   return text2.replace(/\s+/g, "");
@@ -51510,7 +51465,9 @@ var ZONES = [
   {
     id: "infra",
     label: "CI e deploy",
-    path: /^\.github\/|^\.gitlab-ci\.ya?ml$|^\.circleci\/|(^|\/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|[^/]+\.tf|vercel\.json|netlify\.toml|fly\.toml)$|(^|\/)(deploy|k8s|helm|terraform)\//i
+    // Tudo em .github/ (workflows, scripts de publicação, CODEOWNERS), menos modelos de issue e de PR,
+    // textos .md e FUNDING. Medido no bench: o script de publicação do Zod fica em .github/scripts/.
+    path: /^\.github\/(?!(ISSUE_TEMPLATE|DISCUSSION_TEMPLATE)\/|[^/]+\.md$|FUNDING\.ya?ml$)|^\.gitlab-ci\.ya?ml$|^\.circleci\/|(^|\/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|[^/]+\.tf|vercel\.json|netlify\.toml|fly\.toml)$|(^|\/)(deploy|k8s|helm|terraform)\//i
   }
 ];
 var CUSTOM_LABEL = "zona marcada na config";
@@ -51544,7 +51501,7 @@ var riskMap = {
     const trivial = [];
     for (const file2 of cs.files) {
       const { added, removed } = lineCounts(file2);
-      const why = file2.skipped ? null : trivialKind(file2);
+      const why = trivialKind(file2);
       if (why) {
         trivial.push({ file: file2.path, lines: added + removed, why });
         continue;
@@ -52091,9 +52048,263 @@ function parse2(code2, filename) {
   }
 }
 
-// packages/core/dist/config.js
+// packages/core/dist/analyzers/agent/index.js
+var MAX_LISTED2 = 8;
+var agent = {
+  name: "agent",
+  appliesTo: (_cs, ctx) => ctx.session !== void 0,
+  async run(cs, ctx) {
+    const session = ctx.session;
+    return { findings: agentFindings(session, cs, ctx.config.tests.patterns), agent: summarize2(session, cs) };
+  }
+};
+function agentFindings(session, cs, testPatterns = []) {
+  const inDiff = new Set(cs.files.filter((f) => f.after !== null).map((f) => f.path));
+  const kind = (file2) => classify(file2, testPatterns);
+  const counts = (file2) => inDiff.has(file2) && (kind(file2) === "source" || kind(file2) === "test");
+  const { events } = session;
+  const out = [];
+  const flagged = /* @__PURE__ */ new Set();
+  events.forEach((e, i) => {
+    if (e.type !== "test" || e.passed)
+      return;
+    const nextIndex = events.findIndex((x, j) => j > i && x.type === "test");
+    const window = events.slice(i + 1, nextIndex < 0 ? void 0 : nextIndex).filter((x) => x.type === "edit");
+    const tests2 = [...new Set(window.filter((x) => kind(x.file) === "test" && inDiff.has(x.file)).map((x) => x.file))];
+    if (tests2.length === 0 || window.some((x) => kind(x.file) === "source"))
+      return;
+    const fresh = tests2.filter((t) => !flagged.has(t));
+    if (fresh.length === 0)
+      return;
+    fresh.forEach((t) => flagged.add(t));
+    const next = nextIndex < 0 ? null : events[nextIndex];
+    out.push({
+      rule: "agent/test-edited-after-failure",
+      level: "review",
+      title: `O agente mexeu s\xF3 no teste depois de ele falhar`,
+      file: fresh[0],
+      details: [
+        `\`${e.command}\` falhou`,
+        `o agente editou ${fresh.join(", ")} sem mudar nenhum c\xF3digo`,
+        next ? `\`${next.command}\` ${next.passed ? "passou" : "falhou de novo"} em seguida` : "e n\xE3o rodou os testes de novo"
+      ],
+      hint: "Pode ser um teste errado de verdade, ou um teste ajustado s\xF3 para passar. Confira o motivo da mudan\xE7a."
+    });
+  });
+  const tests = events.filter((x) => x.type === "test");
+  const lastTest = events.map((x) => x.type).lastIndexOf("test");
+  const after = [...new Set(events.slice(lastTest + 1).filter((x) => x.type === "edit" && counts(x.file)).map((x) => x.file))];
+  if (after.length > 0) {
+    const listed = after.slice(0, MAX_LISTED2);
+    if (after.length > MAX_LISTED2)
+      listed.push(`\u2026 e mais ${after.length - MAX_LISTED2}`);
+    out.push({
+      rule: "agent/tests-not-run",
+      level: "review",
+      title: tests.length === 0 ? "O agente n\xE3o rodou os testes nenhuma vez" : `O agente mudou ${after.length === 1 ? "1 arquivo" : `${after.length} arquivos`} depois da \xFAltima vez que rodou os testes`,
+      file: after[0],
+      details: listed,
+      hint: "Rode a su\xEDte antes do merge: o agente n\xE3o viu o resultado destas mudan\xE7as."
+    });
+  }
+  const last = tests.at(-1);
+  if (last && !last.passed && after.length === 0) {
+    out.push({
+      rule: "agent/last-test-failed",
+      level: "review",
+      title: "A \xFAltima vez que o agente rodou os testes, eles falharam",
+      details: [`\`${last.command}\``],
+      hint: "Rode os testes de novo. Se ainda falham, o agente entregou o trabalho quebrado."
+    });
+  }
+  return out;
+}
+function summarize2(session, cs) {
+  const edits = session.events.filter((x) => x.type === "edit");
+  const tests = session.events.filter((x) => x.type === "test");
+  const edited = new Set(edits.map((x) => x.file));
+  const last = tests.at(-1);
+  return {
+    tool: session.tool,
+    prompt: session.prompt,
+    edits: edits.length,
+    filesEdited: edited.size,
+    testRuns: tests.length,
+    testFailures: tests.filter((x) => !x.passed).length,
+    lastTest: last ? last.passed ? "passed" : "failed" : null,
+    // Arquivos do diff em que o agente não mexeu: mudaram por outra mão (ou por um comando, como um build).
+    untouched: cs.files.filter((f) => !edited.has(f.path) && !edited.has(f.oldPath ?? "")).length
+  };
+}
+
+// packages/core/dist/analyzers/agent/transcript.js
 var import_promises2 = require("node:fs/promises");
+var import_node_os3 = require("node:os");
 var import_node_path9 = require("node:path");
+var PROMPT_MAX = 240;
+var EDIT_TOOLS = { Edit: "file_path", MultiEdit: "file_path", Write: "file_path", NotebookEdit: "notebook_path" };
+var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash", "PowerShell"]);
+var READ_ONLY = /* @__PURE__ */ new Set(["cat", "grep", "rg", "sed", "echo", "git", "ls", "head", "tail", "find", "less", "type", "select-string", "get-content"]);
+var FAIL_OUTPUT = /\b[1-9]\d* (failed|failing)\b|^\s*FAIL\b|^not ok \d+|^# fail [1-9]/m;
+var TEST_SUMMARY = /^\s*(Test Files|Tests)\s+\d+ (passed|failed)|^Tests:\s+\d+ (passed|failed)|^\s*\d+ passing \(|^# tests \d+/m;
+var MAX_CANDIDATES = 12;
+function parseClaudeSession(text2, root) {
+  const pending = /* @__PURE__ */ new Map();
+  const events = [];
+  let prompt = null;
+  for (const raw of text2.split("\n")) {
+    if (!raw.trim())
+      continue;
+    let line;
+    try {
+      line = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    if (line.isSidechain)
+      continue;
+    const time3 = typeof line.timestamp === "string" ? line.timestamp : "";
+    const content = line.message?.content;
+    if (line.type === "user") {
+      if (prompt === null && !line.isMeta)
+        prompt = promptText(content);
+      if (!Array.isArray(content))
+        continue;
+      for (const item of content) {
+        if (item?.type !== "tool_result" || typeof item.tool_use_id !== "string")
+          continue;
+        const use = pending.get(item.tool_use_id);
+        pending.delete(item.tool_use_id);
+        if (!use)
+          continue;
+        const event = toEvent(use, item.is_error === true, resultText(item.content), root);
+        if (event)
+          events.push(event);
+      }
+    } else if (line.type === "assistant" && Array.isArray(content)) {
+      for (const item of content) {
+        if (item?.type === "tool_use" && typeof item.id === "string" && typeof item.name === "string") {
+          pending.set(item.id, { name: item.name, input: item.input ?? {}, cwd: line.cwd, time: time3 });
+        }
+      }
+    }
+  }
+  return { tool: "claude-code", prompt, events };
+}
+function toEvent(use, isError, output2, root) {
+  const key = EDIT_TOOLS[use.name];
+  if (key) {
+    if (isError || typeof use.input[key] !== "string")
+      return null;
+    const file2 = repoPath(use.input[key], root, use.cwd);
+    return file2 === null ? null : { type: "edit", file: file2, time: use.time };
+  }
+  if (SHELL_TOOLS.has(use.name) && typeof use.input.command === "string") {
+    const command = use.input.command;
+    const byName = runsTests(command);
+    if (!byName && !TEST_SUMMARY.test(output2) || !aboutRepo(command, use.cwd, root))
+      return null;
+    return { type: "test", command: byName ? firstTestSegment(command) : shortCommand(command), passed: !isError && !FAIL_OUTPUT.test(output2), time: use.time };
+  }
+  return null;
+}
+function segments(command) {
+  return command.split(/&&|\|\||[;|\n]/).map((s) => s.trim()).filter(Boolean);
+}
+function runsTests(command) {
+  return segments(command).some(isTestSegment);
+}
+function isTestSegment(s) {
+  const first = s.split(/\s+/)[0].toLowerCase();
+  return !READ_ONLY.has(first) && TEST_COMMAND.test(s);
+}
+function firstTestSegment(command) {
+  return segments(command).find(isTestSegment) ?? command.trim();
+}
+function shortCommand(command) {
+  return segments(command).find((s) => !/^cd\s/.test(s)) ?? command.trim();
+}
+function aboutRepo(command, cwd, root) {
+  if (cwd && repoPath(cwd, root, void 0, true) !== null)
+    return true;
+  return normalize2(command).toLowerCase().includes(normalize2(root).toLowerCase());
+}
+function normalize2(p) {
+  return p.replace(/\\/g, "/").replace(/(^|[\s"'=])\/([a-zA-Z])\//g, (_, pre, drive) => `${pre}${drive.toUpperCase()}:/`);
+}
+function repoPath(path, root, cwd, allowRoot = false) {
+  let p = normalize2(path);
+  if (!/^([a-zA-Z]:)?\//.test(p) && cwd)
+    p = `${normalize2(cwd).replace(/\/$/, "")}/${p}`;
+  const r = normalize2(root).replace(/\/$/, "");
+  const caseless = /^[a-zA-Z]:/.test(r);
+  const [pp, rr] = caseless ? [p.toLowerCase(), r.toLowerCase()] : [p, r];
+  if (allowRoot && pp === rr)
+    return "";
+  if (!pp.startsWith(`${rr}/`))
+    return null;
+  return p.slice(r.length + 1);
+}
+function promptText(content) {
+  const raw = typeof content === "string" ? content : Array.isArray(content) ? content.map((c) => c?.type === "text" && typeof c.text === "string" ? c.text : "").join("\n") : "";
+  const text2 = raw.replace(/<([a-z-]+)>[\s\S]*?<\/\1>/g, "").replace(/\s+/g, " ").trim();
+  if (!text2 || Array.isArray(content) && content.some((c) => c?.type === "tool_result"))
+    return null;
+  return text2.length > PROMPT_MAX ? `${text2.slice(0, PROMPT_MAX - 1)}\u2026` : text2;
+}
+function resultText(content) {
+  if (typeof content === "string")
+    return content;
+  if (!Array.isArray(content))
+    return "";
+  return content.map((c) => typeof c?.text === "string" ? c.text : "").join("\n");
+}
+function claudeProjectsDir(env = process.env) {
+  return (0, import_node_path9.join)(env.CLAUDE_CONFIG_DIR ?? (0, import_node_path9.join)((0, import_node_os3.homedir)(), ".claude"), "projects");
+}
+function slug(path) {
+  return path.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
+}
+async function findClaudeSession(root, opts = {}) {
+  const dir = opts.dir ?? claudeProjectsDir();
+  const wanted = /* @__PURE__ */ new Set();
+  for (let p = root; ; p = (0, import_node_path9.dirname)(p)) {
+    wanted.add(slug(p));
+    if ((0, import_node_path9.dirname)(p) === p)
+      break;
+  }
+  let projects;
+  try {
+    projects = (await (0, import_promises2.readdir)(dir)).filter((name) => wanted.has(name.toLowerCase()));
+  } catch {
+    return null;
+  }
+  const files = [];
+  for (const project of projects) {
+    for (const name of await (0, import_promises2.readdir)((0, import_node_path9.join)(dir, project)).catch(() => [])) {
+      if (!name.endsWith(".jsonl"))
+        continue;
+      const file2 = (0, import_node_path9.join)(dir, project, name);
+      const info = await (0, import_promises2.stat)(file2).catch(() => null);
+      if (info && (!opts.since || info.mtimeMs >= opts.since.getTime()))
+        files.push({ file: file2, mtime: info.mtimeMs });
+    }
+  }
+  files.sort((a, b) => b.mtime - a.mtime);
+  for (const { file: file2 } of files.slice(0, MAX_CANDIDATES)) {
+    const session = parseClaudeSession(await (0, import_promises2.readFile)(file2, "utf8"), root);
+    if (session.events.length > 0)
+      return { file: file2, session };
+  }
+  return null;
+}
+async function loadClaudeSession(file2, root) {
+  return parseClaudeSession(await (0, import_promises2.readFile)(file2, "utf8"), root);
+}
+
+// packages/core/dist/config.js
+var import_promises3 = require("node:fs/promises");
+var import_node_path10 = require("node:path");
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -71858,7 +72069,7 @@ ${external_exports.prettifyError(result2.error)}`);
 async function loadConfig(root) {
   let text2;
   try {
-    text2 = await (0, import_promises2.readFile)((0, import_node_path9.join)(root, CONFIG_FILE), "utf8");
+    text2 = await (0, import_promises3.readFile)((0, import_node_path10.join)(root, CONFIG_FILE), "utf8");
   } catch (err) {
     if (err.code === "ENOENT")
       return parseConfig({});
@@ -71892,23 +72103,28 @@ function compareFindings(a, b) {
 }
 
 // packages/core/dist/version.js
-var VERSION = "0.1.0";
+var VERSION = "0.2.0";
 
 // packages/core/dist/run.js
-var ANALYZERS = [testIntegrity, ciIntegrity, deps, riskMap, mutation];
+var ANALYZERS = [testIntegrity, ciIntegrity, deps, riskMap, mutation, agent];
 async function runLaudo(opts) {
   const started = performance.now();
   const root = await repoRoot(opts.cwd);
   const loaded = opts.config ?? await loadConfig(root);
   const config2 = opts.mutate ? { ...loaded, mutation: { ...loaded.mutation, enabled: true } } : loaded;
   const base = opts.base ?? config2.base;
+  const progress = opts.onProgress ?? (() => {
+  });
+  progress("lendo o diff");
   const cs = await collectChangeSet({ root, config: config2, worktree: !!opts.worktree, ...base ? { base } : {} });
   const notes = [];
+  const session = opts.agent ? await readSession(opts.agent, root, cs.base, opts.agentDir, notes) : void 0;
   const ctx = {
     config: config2,
     registry: opts.registry ?? new NpmRegistry({ registry: config2.deps.registry, cache: new FileCache(defaultCacheFile()) }),
     stryker: opts.stryker ?? nodeStrykerRunner,
     now: opts.now ?? /* @__PURE__ */ new Date(),
+    ...session ? { session } : {},
     note: (message) => notes.push(message)
   };
   const analyzers = {};
@@ -71916,12 +72132,14 @@ async function runLaudo(opts) {
   const reviewPlan = [];
   const trivial = [];
   let mutationSummary;
+  let agentSummary;
   const active = (opts.analyzers ?? ANALYZERS).filter((a) => {
     const applies = a.appliesTo(cs, ctx);
     if (!applies)
       analyzers[a.name] = "skipped";
     return applies;
   });
+  progress(`analisando ${cs.files.length === 1 ? "1 arquivo" : `${cs.files.length} arquivos`}`);
   const results = await Promise.allSettled(active.map((a) => a.run(cs, ctx)));
   results.forEach((result2, i) => {
     const a = active[i];
@@ -71931,6 +72149,7 @@ async function runLaudo(opts) {
       reviewPlan.push(...result2.value.reviewPlan ?? []);
       trivial.push(...result2.value.trivial ?? []);
       mutationSummary ??= result2.value.mutation;
+      agentSummary ??= result2.value.agent;
     } else {
       analyzers[a.name] = "error";
       notes.push(`O analisador ${a.name} falhou: ${result2.reason?.message ?? String(result2.reason)}`);
@@ -71944,6 +72163,7 @@ async function runLaudo(opts) {
     reviewPlan,
     trivial,
     ...mutationSummary ? { mutation: mutationSummary } : {},
+    ...agentSummary ? { agent: agentSummary } : {},
     notes,
     analyzers,
     meta: {
@@ -71957,13 +72177,172 @@ async function runLaudo(opts) {
   };
   return { report, config: config2 };
 }
+async function readSession(wanted, root, base, dir, notes) {
+  const since = new Date((await git(root, ["show", "-s", "--format=%cI", base])).trim());
+  let session;
+  if (typeof wanted === "object") {
+    session = wanted;
+  } else if (typeof wanted === "string") {
+    try {
+      session = await loadClaudeSession(wanted, root);
+    } catch (err) {
+      notes.push(`N\xE3o deu para ler a sess\xE3o ${wanted}: ${err.message}`);
+      return void 0;
+    }
+  } else {
+    const found = await findClaudeSession(root, { since, ...dir ? { dir } : {} });
+    if (!found) {
+      notes.push("N\xE3o achei uma sess\xE3o do Claude Code que tenha mexido neste reposit\xF3rio depois da base.");
+      return void 0;
+    }
+    session = found.session;
+  }
+  const events = session.events.filter((e) => !e.time || new Date(e.time) >= since);
+  if (events.length === 0) {
+    notes.push("A sess\xE3o do agente n\xE3o tem edi\xE7\xF5es nem testes depois do commit da base; ela ficou fora do laudo.");
+    return void 0;
+  }
+  return { ...session, events };
+}
 function withId(f) {
   const hash2 = (0, import_node_crypto.createHash)("sha1").update([f.rule, f.file ?? "", f.title, f.evidence?.before ?? "", f.evidence?.after ?? ""].join("\0")).digest("hex").slice(0, 12);
   return { id: hash2, ...f };
 }
 
-// packages/core/dist/render/terminal.js
-var import_picocolors = __toESM(require_picocolors(), 1);
+// packages/core/dist/rules.js
+var RULES = {
+  "tests/assertion-removed": {
+    maxLevel: "block",
+    summary: "Um assert foi apagado e nada entrou no lugar.",
+    fix: "Se o comportamento mudou, ajuste o valor esperado em vez de apagar a verifica\xE7\xE3o."
+  },
+  "tests/tautology": {
+    maxLevel: "block",
+    summary: "Um assert novo sempre passa, porque compara um valor com ele mesmo ou com uma constante.",
+    fix: "Compare o resultado do c\xF3digo com o valor que ele deveria dar, escrito \xE0 m\xE3o."
+  },
+  "tests/only-added": {
+    maxLevel: "block",
+    summary: "Um .only novo faz o resto da su\xEDte parar de rodar.",
+    fix: "Tire o .only (ou fit/fdescribe) antes do merge."
+  },
+  "tests/body-emptied": {
+    maxLevel: "block",
+    summary: "O corpo de um teste foi esvaziado.",
+    fix: "Restaure as verifica\xE7\xF5es, ou apague o teste de forma expl\xEDcita e diga por qu\xEA."
+  },
+  "tests/test-skipped": {
+    maxLevel: "review",
+    summary: "Um teste ou bloco foi desativado (skip ou todo).",
+    fix: "Confirme se foi de prop\xF3sito e deixe o motivo escrito no c\xF3digo, com um link para a tarefa que o reativa."
+  },
+  "tests/expected-changed": {
+    maxLevel: "review",
+    summary: "O valor esperado de um assert mudou.",
+    fix: "Confira se o novo valor est\xE1 certo pela regra do neg\xF3cio, e n\xE3o s\xF3 copiado da sa\xEDda para o teste passar."
+  },
+  "tests/assertion-weakened": {
+    maxLevel: "review",
+    summary: "Um assert passou a s\xF3 conferir que existe um valor, sem conferir qual.",
+    fix: "Volte a conferir o valor exato (toBe, toEqual) em vez de s\xF3 toBeDefined ou toBeTruthy."
+  },
+  "tests/assertions-reduced": {
+    maxLevel: "review",
+    summary: "Um teste ficou com menos verifica\xE7\xF5es que antes.",
+    fix: "Confira se o teste ainda verifica tudo o que verificava antes."
+  },
+  "tests/test-removed": {
+    maxLevel: "review",
+    summary: "Testes foram removidos do arquivo.",
+    fix: "Confira se o que esses testes cobriam continua testado em outro lugar."
+  },
+  "tests/file-deleted": {
+    maxLevel: "review",
+    summary: "Um arquivo de teste foi apagado.",
+    fix: "Confira se o que esses testes cobriam continua testado em outro lugar."
+  },
+  "tests/empty-test-added": {
+    maxLevel: "review",
+    summary: "Um teste novo n\xE3o tem nada dentro.",
+    fix: "Escreva as verifica\xE7\xF5es ou marque o teste como todo."
+  },
+  "deps/not-found": {
+    maxLevel: "block",
+    summary: "O pacote n\xE3o existe no registro; a IA pode ter inventado o nome.",
+    fix: "Procure o nome certo do pacote no npm. Nunca publique nem instale um nome inventado: algu\xE9m pode registr\xE1-lo com c\xF3digo malicioso."
+  },
+  "deps/version-not-found": {
+    maxLevel: "block",
+    summary: "Nenhuma vers\xE3o publicada atende o que foi pedido.",
+    fix: "Use uma vers\xE3o que exista (`npm view <pacote> versions`)."
+  },
+  "deps/typosquat": {
+    maxLevel: "block",
+    summary: "O nome \xE9 quase igual ao de um pacote popular.",
+    fix: "Confira letra por letra. Se era o pacote popular, troque o nome; se n\xE3o era, confirme quem publica o pacote."
+  },
+  "deps/install-script": {
+    maxLevel: "review",
+    summary: "O pacote roda um script durante a instala\xE7\xE3o.",
+    fix: "Leia o script (preinstall, install, postinstall) antes de instalar. Na d\xFAvida, use `npm install --ignore-scripts`."
+  },
+  "deps/new-package": {
+    maxLevel: "review",
+    summary: "O pacote foi publicado h\xE1 pouco tempo.",
+    fix: "Confirme quem publica e se h\xE1 alternativa mais estabelecida. Pacotes novos s\xE3o o alvo preferido de ataques."
+  },
+  "deps/low-downloads": {
+    maxLevel: "review",
+    summary: "O pacote tem poucos downloads por semana.",
+    fix: "Confirme que \xE9 mesmo o pacote que voc\xEA quer, e n\xE3o um nome parecido."
+  },
+  "deps/registry-unavailable": {
+    maxLevel: "review",
+    summary: "N\xE3o deu para consultar o pacote no registro.",
+    fix: "Rode o Laudo de novo com rede. Se o pacote \xE9 privado, ponha o escopo em `deps.allow`."
+  },
+  "risk/sensitive-zone": {
+    maxLevel: "review",
+    summary: "A mudan\xE7a toca uma zona sens\xEDvel (login, dinheiro, banco, segredos, CI).",
+    fix: "Revise estes arquivos com calma, de prefer\xEAncia com quem conhece a \xE1rea."
+  },
+  "ci/failure-ignored": {
+    maxLevel: "block",
+    summary: "O CI ou um script passou a ignorar falhas (|| true, continue-on-error, if: false).",
+    fix: "Deixe a falha aparecer e conserte a causa. Se um passo pode falhar de prop\xF3sito, escreva o motivo no workflow."
+  },
+  "ci/tests-not-run": {
+    maxLevel: "block",
+    summary: "Um passo ou script que rodava os testes foi removido ou esvaziado.",
+    fix: "Devolva o passo de testes ao CI (ou o comando ao script `test`)."
+  },
+  "ci/coverage-lowered": {
+    maxLevel: "block",
+    summary: "Um limite de cobertura de testes foi reduzido, removido ou desligado.",
+    fix: "Escreva os testes que faltam em vez de baixar o limite."
+  },
+  "mutation/survived": {
+    maxLevel: "block",
+    summary: "Bugs inseridos de prop\xF3sito nas linhas alteradas n\xE3o fazem nenhum teste falhar: os testes n\xE3o provam esta mudan\xE7a.",
+    fix: "Escreva testes que falhem quando a l\xF3gica dessas linhas muda (o laudo lista cada mutante que escapou)."
+  },
+  "agent/test-edited-after-failure": {
+    maxLevel: "review",
+    summary: "Depois de um teste falhar, o agente mudou s\xF3 o teste (nenhum c\xF3digo) at\xE9 ele passar.",
+    fix: "Confira se o teste estava errado de verdade. Se n\xE3o estava, o c\xF3digo \xE9 que precisa mudar."
+  },
+  "agent/tests-not-run": {
+    maxLevel: "review",
+    summary: "O agente mudou c\xF3digo ou testes depois da \xFAltima vez que rodou a su\xEDte (ou nunca rodou).",
+    fix: "Rode os testes antes do merge: o agente n\xE3o viu o resultado dessas mudan\xE7as."
+  },
+  "agent/last-test-failed": {
+    maxLevel: "review",
+    summary: "A \xFAltima execu\xE7\xE3o dos testes na sess\xE3o do agente falhou.",
+    fix: "Rode os testes de novo. Se ainda falham, o trabalho foi entregue quebrado."
+  }
+};
+var RULES_URL = "https://github.com/EduardoxDev/Laudo#as-regras";
 
 // packages/core/dist/render/common.js
 var KIND_LABEL = {
@@ -72008,6 +72387,16 @@ function mutationLine(report) {
   const total = m.killed + m.survived + m.noCoverage;
   return `${m.killed} de ${plural4(total, "mutante pego", "mutantes pegos")} nas linhas alteradas (${m.score}%)`;
 }
+function agentLine(report) {
+  const a = report.agent;
+  if (!a)
+    return null;
+  const edits = `${plural4(a.edits, "edi\xE7\xE3o", "edi\xE7\xF5es")} em ${plural4(a.filesEdited, "arquivo", "arquivos")}`;
+  if (a.testRuns === 0)
+    return `${edits} \xB7 n\xE3o rodou os testes`;
+  const failures = a.testFailures > 0 ? `${plural4(a.testFailures, "falha", "falhas")}, ` : "";
+  return `${edits} \xB7 rodou os testes ${a.testRuns}\xD7 (${failures}a \xFAltima ${a.lastTest === "passed" ? "passou" : "falhou"})`;
+}
 function planSummary(report) {
   if (report.reviewPlan.length === 0 && report.trivial.length === 0)
     return null;
@@ -72020,12 +72409,9 @@ function planSummary(report) {
   return parts.join(" \xB7 ");
 }
 
-// packages/core/dist/render/terminal.js
-var VERDICT = {
-  pass: { icon: "\u2714", label: "APROVADO", color: import_picocolors.default.green },
-  review: { icon: "\u25CF", label: "REVISAR", color: import_picocolors.default.yellow },
-  block: { icon: "\u2716", label: "BLOQUEADO", color: import_picocolors.default.red }
-};
+// packages/core/dist/render/mascot.js
+var W = 20;
+var MASCOT_WIDTH = W + 3;
 
 // packages/core/dist/render/markdown.js
 var REPORT_MARKER = "<!-- laudo:report -->";
@@ -72044,6 +72430,9 @@ function renderMarkdown(report, opts = {}) {
   const mutation2 = mutationLine(report);
   if (mutation2)
     head.push(`**Muta\xE7\xE3o:** ${mutation2}`, "");
+  const agent2 = agentLine(report);
+  if (agent2)
+    head.push(`**Sess\xE3o do agente (Claude Code):** ${agent2}`, "");
   for (const level2 of ["block", "review"]) {
     const list2 = report.findings.filter((f) => f.level === level2);
     if (list2.length === 0)
@@ -72139,37 +72528,6 @@ function longestRun(s, ch) {
   return best;
 }
 
-// packages/core/dist/rules.js
-var RULES = {
-  "tests/assertion-removed": { maxLevel: "block", summary: "Um assert foi apagado e nada entrou no lugar." },
-  "tests/tautology": { maxLevel: "block", summary: "Um assert novo sempre passa, porque compara um valor com ele mesmo ou com uma constante." },
-  "tests/only-added": { maxLevel: "block", summary: "Um .only novo faz o resto da su\xEDte parar de rodar." },
-  "tests/body-emptied": { maxLevel: "block", summary: "O corpo de um teste foi esvaziado." },
-  "tests/test-skipped": { maxLevel: "review", summary: "Um teste ou bloco foi desativado (skip ou todo)." },
-  "tests/expected-changed": { maxLevel: "review", summary: "O valor esperado de um assert mudou." },
-  "tests/assertion-weakened": { maxLevel: "review", summary: "Um assert passou a s\xF3 conferir que existe um valor, sem conferir qual." },
-  "tests/assertions-reduced": { maxLevel: "review", summary: "Um teste ficou com menos verifica\xE7\xF5es que antes." },
-  "tests/test-removed": { maxLevel: "review", summary: "Testes foram removidos do arquivo." },
-  "tests/file-deleted": { maxLevel: "review", summary: "Um arquivo de teste foi apagado." },
-  "tests/empty-test-added": { maxLevel: "review", summary: "Um teste novo n\xE3o tem nada dentro." },
-  "deps/not-found": { maxLevel: "block", summary: "O pacote n\xE3o existe no registro; a IA pode ter inventado o nome." },
-  "deps/version-not-found": { maxLevel: "block", summary: "Nenhuma vers\xE3o publicada atende o que foi pedido." },
-  "deps/typosquat": { maxLevel: "block", summary: "O nome \xE9 quase igual ao de um pacote popular." },
-  "deps/install-script": { maxLevel: "review", summary: "O pacote roda um script durante a instala\xE7\xE3o." },
-  "deps/new-package": { maxLevel: "review", summary: "O pacote foi publicado h\xE1 pouco tempo." },
-  "deps/low-downloads": { maxLevel: "review", summary: "O pacote tem poucos downloads por semana." },
-  "deps/registry-unavailable": { maxLevel: "review", summary: "N\xE3o deu para consultar o pacote no registro." },
-  "risk/sensitive-zone": { maxLevel: "review", summary: "A mudan\xE7a toca uma zona sens\xEDvel (login, dinheiro, banco, segredos, CI)." },
-  "ci/failure-ignored": { maxLevel: "block", summary: "O CI ou um script passou a ignorar falhas (|| true, continue-on-error, if: false)." },
-  "ci/tests-not-run": { maxLevel: "block", summary: "Um passo ou script que rodava os testes foi removido ou esvaziado." },
-  "ci/coverage-lowered": { maxLevel: "block", summary: "Um limite de cobertura de testes foi reduzido, removido ou desligado." },
-  "mutation/survived": {
-    maxLevel: "block",
-    summary: "Bugs inseridos de prop\xF3sito nas linhas alteradas n\xE3o fazem nenhum teste falhar: os testes n\xE3o provam esta mudan\xE7a."
-  }
-};
-var RULES_URL = "https://github.com/EduardoxDev/Laudo#o-que-o-laudo-detecta";
-
 // packages/core/dist/render/sarif.js
 function renderSarif(report) {
   const located = report.findings.filter((f) => f.file);
@@ -72256,6 +72614,16 @@ var ReportSchema = external_exports.object({
     score: external_exports.number().min(0).max(100).nullable(),
     timedOut: external_exports.boolean(),
     runner: str(50)
+  }).optional(),
+  agent: external_exports.object({
+    tool: external_exports.literal("claude-code"),
+    prompt: str(1e3).nullable(),
+    edits: count,
+    filesEdited: count,
+    testRuns: count,
+    testFailures: count,
+    lastTest: external_exports.enum(["passed", "failed"]).nullable(),
+    untouched: count
   }).optional(),
   notes: list(str(2e3), 200),
   analyzers: external_exports.record(str(100), external_exports.enum(["ok", "skipped", "error"])),
@@ -72475,10 +72843,10 @@ function pullFromEvent(event) {
   return { number: pr.number, baseSha: pr.base.sha, headSha: pr.head.sha };
 }
 function resolveIn(root, path) {
-  return (0, import_node_path10.isAbsolute)(path) ? path : (0, import_node_path10.join)(root, path);
+  return (0, import_node_path11.isAbsolute)(path) ? path : (0, import_node_path11.join)(root, path);
 }
 function write(path, content) {
-  (0, import_node_fs5.mkdirSync)((0, import_node_path10.dirname)(path), { recursive: true });
+  (0, import_node_fs5.mkdirSync)((0, import_node_path11.dirname)(path), { recursive: true });
   (0, import_node_fs5.writeFileSync)(path, content);
 }
 

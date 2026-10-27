@@ -1,8 +1,32 @@
 {
   "name": "@laudo/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Núcleo do Laudo: coleta o diff, roda os analisadores e dá o veredito.",
   "license": "MIT",
+  "author": "Eduardo Maciel Wanka",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EduardoxDev/Laudo.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/EduardoxDev/Laudo#readme",
+  "bugs": {
+    "url": "https://github.com/EduardoxDev/Laudo/issues"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "code-review",
+    "pull-request",
+    "testing",
+    "claude-code",
+    "supply-chain",
+    "cli"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -1,0 +1,23 @@
+name: Trapaça que passou
+description: Um agente enfraqueceu testes, CI ou dependências e o Laudo não pegou.
+labels: [falso-negativo]
+body:
+  - type: textarea
+    id: mudanca
+    attributes:
+      label: A mudança
+      description: O trecho do diff (antes e depois) ou o link do PR público.
+      render: diff
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que o Laudo deveria dizer
+    validations:
+      required: true
+  - type: input
+    id: agente
+    attributes:
+      label: Agente que fez a mudança
+      placeholder: Claude Code, Codex, Cursor...

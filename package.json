@@ -17,7 +17,9 @@
     "laudo": "node packages/cli/dist/index.js",
     "bundle": "node packages/action/build.mjs",
     "bench": "npm run build && node bench/run.mjs",
-    "demo": "npm run build && node scripts/demo-svg.mjs"
+    "demo": "npm run build && node scripts/demo-svg.mjs && node scripts/lupa-svg.mjs",
+    "check": "npm run typecheck && npm test && npm run bundle && node scripts/check-versions.mjs",
+    "doctor": "node packages/cli/dist/index.js doctor"
   },
   "devDependencies": {
     "@types/node": "20.19.43",

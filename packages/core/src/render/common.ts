@@ -49,6 +49,16 @@ export function mutationLine(report: Report): string | null {
   return `${m.killed} de ${plural(total, 'mutante pego', 'mutantes pegos')} nas linhas alteradas (${m.score}%)`;
 }
 
+/** "36 edições em 12 arquivos · rodou os testes 3× (1 falha, a última passou)", ou `null` sem sessão. */
+export function agentLine(report: Report): string | null {
+  const a = report.agent;
+  if (!a) return null;
+  const edits = `${plural(a.edits, 'edição', 'edições')} em ${plural(a.filesEdited, 'arquivo', 'arquivos')}`;
+  if (a.testRuns === 0) return `${edits} · não rodou os testes`;
+  const failures = a.testFailures > 0 ? `${plural(a.testFailures, 'falha', 'falhas')}, ` : '';
+  return `${edits} · rodou os testes ${a.testRuns}× (${failures}a última ${a.lastTest === 'passed' ? 'passou' : 'falhou'})`;
+}
+
 /** "46 linhas em 3 arquivos · 312 linhas triviais escondidas", ou `null` sem plano. */
 export function planSummary(report: Report): string | null {
   if (report.reviewPlan.length === 0 && report.trivial.length === 0) return null;

@@ -7,3 +7,6 @@ coverage/
 !packages/action/dist/
 packages/action/lib/
 bench/.cache/
+
+# Cache do Laudo (testes de mutação)
+.laudo/

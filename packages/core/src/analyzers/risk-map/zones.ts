@@ -50,7 +50,9 @@ export const ZONES: readonly Zone[] = [
   {
     id: 'infra',
     label: 'CI e deploy',
-    path: /^\.github\/|^\.gitlab-ci\.ya?ml$|^\.circleci\/|(^|\/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|[^/]+\.tf|vercel\.json|netlify\.toml|fly\.toml)$|(^|\/)(deploy|k8s|helm|terraform)\//i,
+    // Tudo em .github/ (workflows, scripts de publicação, CODEOWNERS), menos modelos de issue e de PR,
+    // textos .md e FUNDING. Medido no bench: o script de publicação do Zod fica em .github/scripts/.
+    path: /^\.github\/(?!(ISSUE_TEMPLATE|DISCUSSION_TEMPLATE)\/|[^/]+\.md$|FUNDING\.ya?ml$)|^\.gitlab-ci\.ya?ml$|^\.circleci\/|(^|\/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|[^/]+\.tf|vercel\.json|netlify\.toml|fly\.toml)$|(^|\/)(deploy|k8s|helm|terraform)\//i,
   },
 ];
 

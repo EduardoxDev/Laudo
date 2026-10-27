@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderJson, renderMarkdown, renderTerminal, REPORT_MARKER, type Finding, type Report } from '@laudo/core';
+import { highlight, renderJson, renderMarkdown, renderTerminal, REPORT_MARKER, type Finding, type Report } from '@laudo/core';
 import { code, fence, text } from '../src/render/markdown.js';
 
 const finding = (over: Partial<Finding> = {}): Finding => ({
@@ -102,9 +102,98 @@ describe('renderJson e renderTerminal', () => {
     expect(JSON.parse(renderJson(r)).schemaVersion).toBe(1);
   });
 
-  it('terminal mostra o plano de revisão', () => {
-    const out = renderTerminal(report()).replace(/\x1b\[[0-9;]*m/g, '');
-    expect(out).toContain('Por onde revisar: 12 linhas em 1 arquivo · 9 linhas triviais escondidas (1 arquivo)');
-    expect(out).toContain('1. src/payments/refund.ts  +12 −0  dinheiro e pagamentos');
+});
+
+describe('renderTerminal', () => {
+  const plain = (r: Report, opts: Parameters<typeof renderTerminal>[1] = {}) => renderTerminal(r, { color: false, ...opts });
+
+  it('abre com a Lupa, o selo do veredito, o resumo e a frase dela', () => {
+    const out = plain(report()).split('\n');
+    expect(out.slice(1, 9)).toEqual([
+      '',
+      '    .-"""-.              ✖ BLOQUEADO   1 problema',
+      '   /       \\            laudo 0.1.0 · main (aaaaaaa) → HEAD (bbbbbbb)',
+      '  |  ◣ _ ◢  |           3 arquivos · 4,2 s',
+      '   \\       /',
+      "    '-...-'\\            Lupa: Mexeram nos testes para eles passarem. Isto não entra",
+      '            \\                 assim.',
+      '             \\',
+    ]);
+  });
+
+  it('sem a Lupa (--no-mascot ou terminal estreito), o cabeçalho fica só com o texto', () => {
+    for (const opts of [{ mascot: false }, { width: 64 }]) {
+      const out = plain(report(), opts).split('\n');
+      expect(out[1]).toBe('  ✖ BLOQUEADO   1 problema');
+      expect(out.join('\n')).not.toContain('.-"""-.');
+    }
+  });
+
+  it('agrupa os achados por área e mostra o plano de revisão em tabela', () => {
+    const out = plain(report({ findings: [finding(), finding({ rule: 'deps/typosquat', title: 'lodahs parece lodash', file: 'package.json', line: undefined, evidence: undefined })] }));
+    const tests = out.indexOf(' TESTES ');
+    const deps = out.indexOf(' DEPENDÊNCIAS ');
+    expect(tests).toBeGreaterThan(0);
+    expect(deps).toBeGreaterThan(tests);
+    expect(out).toMatch(/ POR ONDE REVISAR ─+ 12 linhas em 1 arquivo · 9 linhas triviais escondidas \(1 arquivo\)/);
+    expect(out).toMatch(/ 1 {2}src\/payments\/refund\.ts +\+12 −0 +█+ +dinheiro e pagamentos/);
+    expect(out).toContain('Para entender um achado: laudo explain tests/tautology');
+  });
+
+  it('destaca só o trecho que mudou numa evidência de uma linha', () => {
+    const colored = renderTerminal(report(), { color: true });
+    // O trecho diferente vem em vídeo inverso (\x1b[7m).
+    expect(colored).toContain('\x1b[7m\x1b[31mtotal).toBe(42');
+    expect(plain(report())).toContain('│ − expect(total).toBe(42)');
+  });
+
+  it('linhas longas ficam só com o contexto em volta da mudança', () => {
+    const before = `expect(cfg).toEqual({ ${'a: 1, '.repeat(30)}z: 1 })`;
+    const after = `expect(cfg).toEqual({ ${'a: 1, '.repeat(30)}z: 2 })`;
+    const [x, y] = highlight(before, after, 40);
+    expect(x.mid).toBe('1');
+    expect(y.mid).toBe('2');
+    expect(x.pre.startsWith('…')).toBe(true);
+    expect((x.pre + x.mid + x.post).length).toBeLessThanOrEqual(40);
+  });
+
+  it('quebra textos longos na largura do terminal', () => {
+    const hint = 'palavra '.repeat(40).trim();
+    const out = plain(report({ findings: [finding({ hint })] }), { width: 60 });
+    for (const line of out.split('\n')) expect(line.length).toBeLessThanOrEqual(60);
+  });
+
+  it('mostra a sessão do agente e o estado de cada analisador', () => {
+    const out = plain(
+      report({
+        verdict: 'pass',
+        findings: [],
+        analyzers: { 'test-integrity': 'ok', mutation: 'skipped', agent: 'ok', deps: 'error' },
+        agent: { tool: 'claude-code', prompt: 'conserte o desconto', edits: 4, filesEdited: 2, testRuns: 3, testFailures: 1, lastTest: 'passed', untouched: 0 },
+      }),
+    );
+    expect(out).toContain('✔ APROVADO');
+    expect(out).toContain('✔ Nada suspeito em: testes, agente.');
+    expect(out).toMatch(/ SESSÃO DO AGENTE ─+ Claude Code/);
+    expect(out).toContain('pedido  “conserte o desconto”');
+    expect(out).toContain('fez     4 edições em 2 arquivos · rodou os testes 3× (1 falha, a última passou)');
+    expect(out).toContain('✔ testes  ✖ dependências  ○ mutação  ✔ agente');
+  });
+
+  it('--verbose lista o plano inteiro e as mudanças triviais', () => {
+    const plan = Array.from({ length: 8 }, (_, i) => ({ file: `src/f${i}.ts`, kind: 'source' as const, added: 1, removed: 0, zones: [] }));
+    expect(plain(report({ reviewPlan: plan }))).toContain('… e mais 3 arquivos (--verbose mostra todos)');
+    const verbose = plain(report({ reviewPlan: plan }), { verbose: true });
+    expect(verbose).toContain('src/f7.ts');
+    expect(verbose).toContain('src/cart.ts  só formatação ou comentários');
+  });
+});
+
+describe('markdown com a sessão do agente', () => {
+  it('resume o que o agente fez', () => {
+    const md = renderMarkdown(
+      report({ agent: { tool: 'claude-code', prompt: null, edits: 1, filesEdited: 1, testRuns: 0, testFailures: 0, lastTest: null, untouched: 2 } }),
+    );
+    expect(md).toContain('**Sessão do agente (Claude Code):** 1 edição em 1 arquivo · não rodou os testes');
   });
 });

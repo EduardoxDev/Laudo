@@ -8,8 +8,43 @@ on:
 permissions:
   contents: read
 
+# Um push novo no mesmo PR cancela a execução anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
+    name: Testes (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        node: [20, 22, 24]
+        include:
+          # O Laudo nasceu no Windows: caminhos com \ e CRLF precisam continuar funcionando.
+          - os: windows-latest
+            node: 24
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: A CLI responde
+        shell: bash
+        run: |
+          node packages/cli/dist/index.js --version
+          node packages/cli/dist/index.js rules --no-color > /dev/null
+          node packages/cli/dist/index.js explain tautology --no-color > /dev/null
+          node packages/cli/dist/index.js doctor --no-color
+
+  release-ready:
+    name: Bundle e versões
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -18,9 +53,31 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
+      - run: npm run build
       - name: Bundle da Action está atualizado
         run: |
           node packages/action/build.mjs
-          git diff --exit-code packages/action/dist || (echo "::error::Rode 'node packages/action/build.mjs' e commite packages/action/dist." && exit 1)
+          git diff --exit-code packages/action/dist || (echo "::error::Rode 'npm run bundle' e commite packages/action/dist." && exit 1)
+      - name: Versões batem (package.json, VERSION e CHANGELOG)
+        run: node scripts/check-versions.mjs
+      - name: Pacotes do npm montam
+        run: npm pack --dry-run -w packages/core -w packages/cli
+
+  # O Laudo examinando o próprio diff com a CLI (o workflow laudo.yml faz o mesmo com a Action).
+  self-check:
+    name: Laudo no próprio PR
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node packages/cli/dist/index.js check --base origin/${{ github.base_ref }} --verbose
+        env:
+          FORCE_COLOR: '1'

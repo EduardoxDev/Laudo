@@ -41,6 +41,18 @@ export const ReportSchema = z.object({
       runner: str(50),
     })
     .optional(),
+  agent: z
+    .object({
+      tool: z.literal('claude-code'),
+      prompt: str(1_000).nullable(),
+      edits: count,
+      filesEdited: count,
+      testRuns: count,
+      testFailures: count,
+      lastTest: z.enum(['passed', 'failed']).nullable(),
+      untouched: count,
+    })
+    .optional(),
   notes: list(str(2_000), 200),
   analyzers: z.record(str(100), z.enum(['ok', 'skipped', 'error'])),
   meta: z.object({

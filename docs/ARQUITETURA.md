@@ -40,12 +40,13 @@ laudo/
 │  │     │  ├─ test-integrity/   # parse.ts, rules/*.ts
 │  │     │  ├─ deps/             # registry.ts, typosquat.ts, rules.ts
 │  │     │  ├─ risk-map/         # zones.ts, trivial.ts
-│  │     │  └─ mutation/         # ranges.ts, stryker.ts
+│  │     │  ├─ mutation/         # ranges.ts, stryker.ts
+│  │     │  └─ agent/            # transcript.ts (sessão do Claude Code), index.ts (regras)
 │  │     ├─ verdict.ts
 │  │     ├─ render/         # terminal.ts, markdown.ts, json.ts, sarif.ts
 │  │     ├─ config.ts       # carrega e valida laudo.config.json (zod)
 │  │     └─ index.ts        # runLaudo(options): Promise<Report>
-│  ├─ cli/                  # @laudo/cli → binário `laudo` (check, init, explain)
+│  ├─ cli/                  # @laudo/cli → binário `laudo` (check, init, rules, explain)
 │  └─ action/               # GitHub Action (bundle único em dist/)
 ├─ fixtures/                # corpo de PRs: _shared/ (base comum), <caso>/before|after/ e cases.json (veredito e regras esperadas)
 ├─ bench/                   # roda o Laudo em PRs reais e mede precisão e tempo
@@ -197,6 +198,16 @@ Desligado por padrão (`mutation.enabled`, `--mutate`, entrada `mutate` da Actio
 7. **Achados:** nenhum se a nota ≥ `minScore`, porque um ou outro sobrevivente é normal. Abaixo disso, um `mutation/survived` por arquivo (Revisar), com até 5 exemplos, primeiro um por linha. Com nota 0 num PR que também mexeu nos testes, o achado bloqueia.
 
 Medido num projeto de exemplo (Vitest, 6 linhas novas, 16 mutantes): 8,4 s na primeira execução e 5,3 s na segunda, com o incremental.
+
+#### `agent` (v0.2)
+
+Desligado por padrão (`--agent`). Roda só quando há uma sessão em `Context.session`.
+
+1. **Achar a sessão** (`transcript.ts`): o Claude Code guarda cada pasta em `~/.claude/projects/<caminho com tudo que não é letra ou número trocado por "-">/<sessão>.jsonl` (ou em `$CLAUDE_CONFIG_DIR/projects`). O Laudo olha a pasta do repositório e as pastas acima dele, pega as transcrições alteradas depois do commit da base, da mais nova para a mais velha, e fica com a primeira que tocou o repositório.
+2. **Ler** (`parseClaudeSession`): cada `tool_use` é pareado com o seu `tool_result`. Edição (`Edit`, `MultiEdit`, `Write`, `NotebookEdit`) que deu certo, dentro do repositório, vira `edit`. Comando (`Bash`, `PowerShell`) que roda os testes (`TEST_COMMAND`, ignorando `grep`, `cat` e afins), na pasta do repositório ou citando o caminho dele, vira `test`. Falhou se `is_error` ou se a saída tem `N failed`, `FAIL`, `not ok`. Subagentes (`isSidechain`) e linhas quebradas ficam de fora. O pedido é a primeira mensagem da pessoa, sem os avisos do sistema.
+3. **Janela:** só os eventos depois do commit da base. Sem nenhum, a sessão fica fora do laudo (nota).
+4. **Regras** (`index.ts`): sempre Revisar, porque a sessão é um indício, não uma prova. As três regras estão no README; todas só contam arquivos que continuam no diff.
+5. **Resumo** em `report.agent` (JSON, terminal e markdown). Caminhos e comandos de outras pastas nunca entram.
 
 ### 5.3 Veredito (`verdict.ts`)
 

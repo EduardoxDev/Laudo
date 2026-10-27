@@ -1,0 +1,29 @@
+# Atualizações semanais, agrupadas. A espera de 14 dias segue a regra do projeto:
+# nenhuma versão com menos de duas semanas de publicada (tempo para achar pacote comprometido).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      dev:
+        dependency-type: development
+      prod:
+        dependency-type: production
+    commit-message:
+      prefix: deps
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci

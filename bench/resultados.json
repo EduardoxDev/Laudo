@@ -1,6 +1,6 @@
 {
   "date": "2026-10-27",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "results": [
     {
       "repo": "sindresorhus/ky",
@@ -8,7 +8,7 @@
       "subject": "2.2.0",
       "verdict": "pass",
       "files": 1,
-      "ms": 624,
+      "ms": 373,
       "findings": []
     },
     {
@@ -17,7 +17,7 @@
       "subject": "Let a `beforeRetry` hook change per-attempt options",
       "verdict": "pass",
       "files": 9,
-      "ms": 1390,
+      "ms": 691,
       "findings": []
     },
     {
@@ -26,7 +26,7 @@
       "subject": "Fix CI",
       "verdict": "pass",
       "files": 4,
-      "ms": 2232,
+      "ms": 793,
       "findings": []
     },
     {
@@ -35,7 +35,7 @@
       "subject": "Run the browser tests and static checks once in CI",
       "verdict": "review",
       "files": 1,
-      "ms": 661,
+      "ms": 352,
       "findings": [
         {
           "rule": "risk/sensitive-zone",
@@ -51,7 +51,7 @@
       "subject": "Refactor",
       "verdict": "pass",
       "files": 33,
-      "ms": 7313,
+      "ms": 2052,
       "findings": []
     },
     {
@@ -60,7 +60,7 @@
       "subject": "Report the sent request for a hook's response, and finish the cross-realm and `null` checks",
       "verdict": "review",
       "files": 11,
-      "ms": 3068,
+      "ms": 1163,
       "findings": [
         {
           "rule": "tests/test-removed",
@@ -76,7 +76,7 @@
       "subject": "Stop surfacing progress callback errors",
       "verdict": "review",
       "files": 11,
-      "ms": 2720,
+      "ms": 1096,
       "findings": [
         {
           "rule": "tests/test-removed",
@@ -116,7 +116,7 @@
       "subject": "Run `beforeError` for a `beforeRetry` abort and share the body-wrapping check",
       "verdict": "pass",
       "files": 8,
-      "ms": 2036,
+      "ms": 817,
       "findings": []
     },
     {
@@ -125,7 +125,7 @@
       "subject": "Tweaks",
       "verdict": "review",
       "files": 24,
-      "ms": 6049,
+      "ms": 2052,
       "findings": [
         {
           "rule": "tests/test-removed",
@@ -165,7 +165,7 @@
       "subject": "Restore the retry-only marker condition and cover the remaining cases",
       "verdict": "pass",
       "files": 9,
-      "ms": 2892,
+      "ms": 1233,
       "findings": []
     },
     {
@@ -174,7 +174,7 @@
       "subject": "4.13.14",
       "verdict": "pass",
       "files": 1,
-      "ms": 569,
+      "ms": 383,
       "findings": []
     },
     {
@@ -183,7 +183,7 @@
       "subject": "fix(utils/url): preserve encoded duplicate query order (#5495)",
       "verdict": "pass",
       "files": 3,
-      "ms": 872,
+      "ms": 511,
       "findings": []
     },
     {
@@ -192,7 +192,7 @@
       "subject": "feat(bearer-auth): allow MessageFunction to return a Response (#5269)",
       "verdict": "review",
       "files": 2,
-      "ms": 703,
+      "ms": 401,
       "findings": [
         {
           "rule": "risk/sensitive-zone",
@@ -208,7 +208,7 @@
       "subject": "fix(css): Fix multiline CSS handling in style replacement (#5405)",
       "verdict": "pass",
       "files": 2,
-      "ms": 689,
+      "ms": 418,
       "findings": []
     },
     {
@@ -217,7 +217,7 @@
       "subject": "fix(hono-base): disallow `getPath` when `strict` is `false` (#5563)",
       "verdict": "pass",
       "files": 3,
-      "ms": 1395,
+      "ms": 615,
       "findings": []
     },
     {
@@ -226,7 +226,7 @@
       "subject": "fix(trie-router): keep first value for duplicate path params (#5422) (#5423)",
       "verdict": "pass",
       "files": 5,
-      "ms": 1586,
+      "ms": 819,
       "findings": []
     },
     {
@@ -235,7 +235,7 @@
       "subject": "fix(helper/route): match regex params in basePath() the same way as the router (#5498)",
       "verdict": "pass",
       "files": 2,
-      "ms": 556,
+      "ms": 362,
       "findings": []
     },
     {
@@ -244,7 +244,7 @@
       "subject": "fix(serve-static): respect q-values in Accept-Encoding for precompressed files (#5436)",
       "verdict": "pass",
       "files": 2,
-      "ms": 603,
+      "ms": 388,
       "findings": []
     },
     {
@@ -253,7 +253,7 @@
       "subject": "fix(css): keep the descendant combinator before a pseudo-class when minifying (#5451)",
       "verdict": "pass",
       "files": 2,
-      "ms": 642,
+      "ms": 386,
       "findings": []
     },
     {
@@ -262,7 +262,7 @@
       "subject": "fix(css): keep \"//\" inside an unquoted url() when minifying (#5450)",
       "verdict": "pass",
       "files": 2,
-      "ms": 599,
+      "ms": 408,
       "findings": []
     },
     {
@@ -271,7 +271,7 @@
       "subject": "docs: fix syntax errors in code examples (#7159)",
       "verdict": "pass",
       "files": 2,
-      "ms": 459,
+      "ms": 354,
       "findings": []
     },
     {
@@ -280,7 +280,7 @@
       "subject": "docs: clarify that maxParamLength does not prevent ReDoS (#7140)",
       "verdict": "pass",
       "files": 1,
-      "ms": 455,
+      "ms": 349,
       "findings": []
     },
     {
@@ -289,7 +289,7 @@
       "subject": "fix(decorators): evaluate instance getters once in getDecorator (#7124)",
       "verdict": "pass",
       "files": 2,
-      "ms": 773,
+      "ms": 457,
       "findings": []
     },
     {
@@ -298,7 +298,7 @@
       "subject": "perf(request): hoist port regex to module level (#7110)",
       "verdict": "pass",
       "files": 1,
-      "ms": 503,
+      "ms": 383,
       "findings": []
     },
     {
@@ -307,7 +307,7 @@
       "subject": "docs(request): reorganize Request reference by properties and methods (#7147)",
       "verdict": "pass",
       "files": 1,
-      "ms": 567,
+      "ms": 336,
       "findings": []
     },
     {
@@ -316,7 +316,7 @@
       "subject": "docs(reply): reorganize Reply reference by properties and methods (#7146)",
       "verdict": "pass",
       "files": 1,
-      "ms": 527,
+      "ms": 339,
       "findings": []
     },
     {
@@ -325,7 +325,7 @@
       "subject": "test: do not assert a HEAD response body through inject() (#7148)",
       "verdict": "pass",
       "files": 2,
-      "ms": 755,
+      "ms": 425,
       "findings": []
     },
     {
@@ -334,7 +334,7 @@
       "subject": "fix(types): add logSerializers to RouteShorthandOptions",
       "verdict": "pass",
       "files": 2,
-      "ms": 775,
+      "ms": 413,
       "findings": []
     },
     {
@@ -343,7 +343,7 @@
       "subject": "fix(types): allow socket path strings in addresses (#6842)",
       "verdict": "pass",
       "files": 2,
-      "ms": 728,
+      "ms": 440,
       "findings": []
     },
     {
@@ -352,7 +352,7 @@
       "subject": "feat(hooks): support disposables in onClose hook (#7121)",
       "verdict": "pass",
       "files": 5,
-      "ms": 827,
+      "ms": 481,
       "findings": []
     },
     {
@@ -361,7 +361,7 @@
       "subject": "test: expand coverage for request, response and view behavior (#7112)",
       "verdict": "review",
       "files": 9,
-      "ms": 1011,
+      "ms": 617,
       "findings": [
         {
           "rule": "tests/test-removed",
@@ -377,7 +377,7 @@
       "subject": "docs: correct crossed names in the emeritus triagers list (#7529)",
       "verdict": "pass",
       "files": 1,
-      "ms": 458,
+      "ms": 358,
       "findings": []
     },
     {
@@ -386,7 +386,7 @@
       "subject": "Revert \"build(deps-dev): bump supertest from 6.3.0 to 7.3.0 (#7494)\" (#7518)",
       "verdict": "pass",
       "files": 4,
-      "ms": 584,
+      "ms": 440,
       "findings": []
     },
     {
@@ -395,7 +395,7 @@
       "subject": "build(deps-dev): bump supertest from 6.3.0 to 7.3.0 (#7494)",
       "verdict": "pass",
       "files": 4,
-      "ms": 576,
+      "ms": 470,
       "findings": []
     },
     {
@@ -404,7 +404,7 @@
       "subject": "5.3.0 (#7468)",
       "verdict": "pass",
       "files": 2,
-      "ms": 407,
+      "ms": 361,
       "findings": []
     },
     {
@@ -413,7 +413,7 @@
       "subject": "docs: fix typos and a stale API reference in lib comments (#7512)",
       "verdict": "pass",
       "files": 2,
-      "ms": 755,
+      "ms": 380,
       "findings": []
     },
     {
@@ -422,7 +422,7 @@
       "subject": "docs: fix pass-through typos (#7509)",
       "verdict": "pass",
       "files": 2,
-      "ms": 1536,
+      "ms": 420,
       "findings": []
     },
     {
@@ -431,7 +431,7 @@
       "subject": "build(deps): bump the github-actions group with 3 updates (#7499)",
       "verdict": "review",
       "files": 2,
-      "ms": 965,
+      "ms": 357,
       "findings": [
         {
           "rule": "risk/sensitive-zone",
@@ -447,7 +447,7 @@
       "subject": "build(deps-dev): bump hbs from 4.3.0 to 4.3.1 (#7500)",
       "verdict": "pass",
       "files": 1,
-      "ms": 969,
+      "ms": 426,
       "findings": []
     },
     {
@@ -456,7 +456,7 @@
       "subject": "docs: add missing apostrophe in example (#7483)",
       "verdict": "pass",
       "files": 2,
-      "ms": 576,
+      "ms": 357,
       "findings": []
     },
     {
@@ -465,7 +465,7 @@
       "subject": "release: the approval summary tells the maintainer to run stager, not stager approve (#6675)",
       "verdict": "review",
       "files": 1,
-      "ms": 415,
+      "ms": 359,
       "findings": [
         {
           "rule": "risk/sensitive-zone",
@@ -481,7 +481,7 @@
       "subject": "release: tag before installing dependencies, and delete the key after the push (#6674)",
       "verdict": "review",
       "files": 1,
-      "ms": 382,
+      "ms": 320,
       "findings": [
         {
           "rule": "risk/sensitive-zone",
@@ -497,7 +497,7 @@
       "subject": "release: only the approved release job can create a tag, and the dispatch carries the notes (#6672)",
       "verdict": "review",
       "files": 1,
-      "ms": 410,
+      "ms": 335,
       "findings": [
         {
           "rule": "risk/sensitive-zone",
@@ -513,7 +513,7 @@
       "subject": "fix(v4): report a union option that only checks rejected (#6662)",
       "verdict": "pass",
       "files": 2,
-      "ms": 1274,
+      "ms": 614,
       "findings": []
     },
     {
@@ -522,7 +522,7 @@
       "subject": "fix(locales): add Sizable.map to es, fr, he, hr and lt, and check Sizable parity from source (#6661)",
       "verdict": "review",
       "files": 7,
-      "ms": 814,
+      "ms": 547,
       "findings": [
         {
           "rule": "tests/test-removed",
@@ -538,7 +538,7 @@
       "subject": "fix(v4): run a record's key schema on an own __proto__ key (#6660)",
       "verdict": "pass",
       "files": 4,
-      "ms": 2108,
+      "ms": 963,
       "findings": []
     },
     {
@@ -547,7 +547,7 @@
       "subject": "4.6.7",
       "verdict": "pass",
       "files": 6,
-      "ms": 1096,
+      "ms": 435,
       "findings": []
     },
     {
@@ -556,7 +556,7 @@
       "subject": "ci: stage at verbose so a failed OIDC token exchange says why",
       "verdict": "review",
       "files": 1,
-      "ms": 431,
+      "ms": 357,
       "findings": [
         {
           "rule": "risk/sensitive-zone",
@@ -572,7 +572,7 @@
       "subject": "4.6.6",
       "verdict": "pass",
       "files": 6,
-      "ms": 626,
+      "ms": 457,
       "findings": []
     },
     {
@@ -581,7 +581,7 @@
       "subject": "fix(v4): check array, set and map size bounds before parsing elements (#6652)",
       "verdict": "pass",
       "files": 6,
-      "ms": 1848,
+      "ms": 889,
       "findings": []
     }
   ]

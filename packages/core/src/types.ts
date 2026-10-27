@@ -1,3 +1,4 @@
+import type { AgentSession } from './analyzers/agent/transcript.js';
 import type { RegistryClient } from './analyzers/deps/registry.js';
 import type { StrykerRunner } from './analyzers/mutation/stryker.js';
 import type { Config } from './config.js';
@@ -24,6 +25,8 @@ export interface ChangedFile {
   after: string | null;
   /** Preenchido quando o conteúdo não foi lido (binário ou grande demais). */
   skipped?: 'binary' | 'too-large';
+  /** Marcado como gerado no .gitattributes (`linguist-generated`). */
+  generated?: true;
   hunks: Hunk[];
 }
 
@@ -66,6 +69,8 @@ export interface Context {
   stryker: StrykerRunner;
   /** "Agora", fixo durante a execução (e controlável nos testes). */
   now: Date;
+  /** Sessão do agente que fez a mudança, quando foi pedida e encontrada. */
+  session?: AgentSession;
   /** Registra algo que o relatório deve mencionar sem virar achado (ex.: arquivo que não deu para ler). */
   note(message: string): void;
 }
@@ -103,11 +108,26 @@ export interface MutationSummary {
   runner: string;
 }
 
+/** O que o agente fez na sessão, quando ela foi lida (`--agent`). */
+export interface AgentSummary {
+  tool: 'claude-code';
+  /** Primeiro pedido da pessoa na sessão, cortado. */
+  prompt: string | null;
+  edits: number;
+  filesEdited: number;
+  testRuns: number;
+  testFailures: number;
+  lastTest: 'passed' | 'failed' | null;
+  /** Arquivos do diff em que o agente não mexeu. */
+  untouched: number;
+}
+
 export interface AnalyzerOutput {
   findings: RawFinding[];
   reviewPlan?: PlanEntry[];
   trivial?: TrivialEntry[];
   mutation?: MutationSummary;
+  agent?: AgentSummary;
   /** O analisador decidiu não rodar (o motivo vai numa nota). */
   status?: 'skipped';
 }
@@ -130,6 +150,8 @@ export interface Report {
   trivial: TrivialEntry[];
   /** Só existe quando a mutação rodou. */
   mutation?: MutationSummary;
+  /** Só existe quando a sessão do agente foi lida. */
+  agent?: AgentSummary;
   notes: string[];
   analyzers: Record<string, AnalyzerStatus>;
   meta: {

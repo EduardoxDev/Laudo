@@ -47,6 +47,10 @@ export async function collectChangeSet(opts: CollectOptions): Promise<ChangeSet>
   const relevant = entries.filter((e) => !e.path.startsWith(`${LAUDO_DIR}/`) && !matchesAny(e.path, config.ignore));
   const ctx: BuildCtx = { root, base, head: headSha, worktree: !!opts.worktree, config, hunks };
   const files = await mapLimit(relevant, READ_CONCURRENCY, (e) => buildFile(e, ctx));
+  for (const path of await generatedPaths(root, files.map((f) => f.path))) {
+    const file = files.find((f) => f.path === path);
+    if (file) file.generated = true;
+  }
 
   return {
     root,
@@ -58,7 +62,7 @@ export async function collectChangeSet(opts: CollectOptions): Promise<ChangeSet>
   };
 }
 
-async function resolveBase(root: string, wanted?: string): Promise<string> {
+export async function resolveBase(root: string, wanted?: string): Promise<string> {
   const candidates = wanted ? [wanted] : DEFAULT_BASES;
   for (const ref of candidates) {
     if ((await tryGit(root, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`])) !== null) return ref;
@@ -129,6 +133,22 @@ function checkContent(text: string): Blob {
   if (text.length > MAX_FILE_CHARS) return { skipped: 'too-large' };
   if (text.includes('\0')) return { skipped: 'binary' };
   return { text };
+}
+
+const ATTR_CHUNK = 500;
+
+/** Arquivos marcados como gerados no .gitattributes (`linguist-generated`, o mesmo atributo que o GitHub usa). */
+async function generatedPaths(root: string, paths: string[]): Promise<string[]> {
+  const out: string[] = [];
+  for (let i = 0; i < paths.length; i += ATTR_CHUNK) {
+    const res = await tryGit(root, ['check-attr', '-z', 'linguist-generated', '--', ...paths.slice(i, i + ATTR_CHUNK)]);
+    if (res === null) continue;
+    const parts = res.split('\0');
+    for (let j = 0; j + 2 < parts.length; j += 3) {
+      if (parts[j + 2] === 'set' || parts[j + 2] === 'true') out.push(parts[j]!);
+    }
+  }
+  return out;
 }
 
 /** Nomes dos pacotes do próprio repositório (monorepo), que não precisam estar no registro. */

@@ -18,7 +18,7 @@ export const riskMap: Analyzer = {
 
     for (const file of cs.files) {
       const { added, removed } = lineCounts(file);
-      const why = file.skipped ? null : trivialKind(file);
+      const why = trivialKind(file);
       if (why) {
         trivial.push({ file: file.path, lines: added + removed, why });
         continue;

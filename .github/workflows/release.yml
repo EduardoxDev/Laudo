@@ -1,0 +1,65 @@
+# Publica uma versão a partir de uma tag: `git tag -a v0.2.0 -m "Laudo 0.2.0" && git push origin v0.2.0`.
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # criar a release e mover a tag v<major>
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: A tag bate com as versões do código
+        run: node scripts/check-versions.mjs "${GITHUB_REF_NAME#v}"
+      - name: Notas da versão (do CHANGELOG)
+        run: node scripts/release-notes.mjs "${GITHUB_REF_NAME#v}" > notes.md
+      - name: Cria a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "Laudo $GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+      # Quem usa `EduardoxDev/Laudo@v0` recebe a versão nova.
+      - name: Move a tag da versão maior
+        run: |
+          major="${GITHUB_REF_NAME%%.*}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -fa "$major" -m "Laudo $GITHUB_REF_NAME" "$GITHUB_REF_NAME^{commit}"
+          git push -f origin "refs/tags/$major"
+
+  npm:
+    name: Publica no npm
+    needs: release
+    # Ligue criando a variável NPM_PUBLISH=true e o segredo NPM_TOKEN no repositório.
+    if: vars.NPM_PUBLISH == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # proveniência (npm provenance)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm run build
+      - run: npm publish --provenance --access public -w packages/core -w packages/cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

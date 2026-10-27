@@ -113,8 +113,9 @@ GitHub Action: `uses: <org>/laudo-action@v0` → roda no `pull_request` e public
 
 | Versão | Recurso |
 |---|---|
-| v0.2 | **Pedido × diff:** hook do Claude Code e leitura das sessões do Codex; compara o que foi pedido com os arquivos tocados e aponta mudanças fora do escopo |
-| v0.2 | Rastro de origem: trailer `Laudo-Session:` no commit, ligando ao resumo da sessão |
+| v0.2 ✔ | **Sessão do agente** (entregue): lê a transcrição do Claude Code e confere se os testes rodaram depois da última mudança, se passaram e se o agente mexeu só no teste depois de ele falhar |
+| v0.3 | **Pedido × diff:** leitura das sessões do Codex; compara o que foi pedido com os arquivos tocados e aponta mudanças fora do escopo |
+| v0.3 | Rastro de origem: trailer `Laudo-Session:` no commit, ligando ao resumo da sessão |
 | v0.3 | **Checagem de entendimento:** 2 ou 3 perguntas ao autor antes do merge (com IA, opcional) |
 | v0.3 | Python (pytest, PyPI) |
 | v0.4 | Painel web com histórico por repositório: PRs barrados, tempo de revisão, agentes mais "trapaceiros" |

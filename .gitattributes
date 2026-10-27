@@ -1,2 +1,5 @@
 # LF em todo lugar: os fixtures e a Action (Linux) precisam do mesmo conteúdo que o Windows.
 * text=auto eol=lf
+
+# Gerado pelo esbuild: o Laudo e o GitHub tratam como arquivo gerado.
+packages/action/dist/** linguist-generated

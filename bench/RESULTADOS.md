@@ -1,8 +1,8 @@
 # Bench do Laudo
 
-Rodado em 2026-10-27 com o Laudo 0.1.0, sem mutação. Cada linha é um commit da branch principal (um PR já revisado e mesclado), comparado com o commit anterior.
+Rodado em 2026-10-27 com o Laudo 0.2.0, sem mutação. Cada linha é um commit da branch principal (um PR já revisado e mesclado), comparado com o commit anterior.
 
-**50 PRs · 38 aprovados · 12 revisar · 0 bloqueados · 0 erros** · tempo mediano 0.8 s, p95 3.1 s
+**50 PRs · 38 aprovados · 12 revisar · 0 bloqueados · 0 erros** · tempo mediano 0.4 s, p95 1.2 s
 
 ## Por projeto
 

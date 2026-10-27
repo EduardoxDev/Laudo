@@ -1,0 +1,31 @@
+name: Falso positivo
+description: O Laudo acusou uma mudança que estava certa.
+labels: [falso-positivo]
+body:
+  - type: input
+    id: regra
+    attributes:
+      label: Regra
+      description: O id que aparece no achado, como tests/expected-changed.
+      placeholder: tests/expected-changed
+    validations:
+      required: true
+  - type: textarea
+    id: mudanca
+    attributes:
+      label: A mudança
+      description: O trecho do diff (antes e depois) ou o link do PR público.
+      render: diff
+    validations:
+      required: true
+  - type: textarea
+    id: porque
+    attributes:
+      label: Por que está certa
+    validations:
+      required: true
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do Laudo
+      placeholder: laudo --version

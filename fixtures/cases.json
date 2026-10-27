@@ -129,5 +129,12 @@
     "description": "Código novo com testes novos e de verdade.",
     "verdict": "pass",
     "rules": []
+  },
+  "generated-files": {
+    "description": "Arquivos gerados (marcado como linguist-generated, com cabeçalho \"DO NOT EDIT\" e .min.js) saem do plano de revisão.",
+    "verdict": "pass",
+    "rules": [],
+    "trivial": { "build/app.js": "generated", "public/app.min.js": "generated", "src/schema.gen.ts": "generated" },
+    "planFirst": ".gitattributes"
   }
 }
