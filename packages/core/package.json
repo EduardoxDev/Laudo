@@ -43,11 +43,11 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@babel/parser": "7.29.9",
-    "@babel/types": "7.29.8",
+    "@babel/parser": "8.0.7",
+    "@babel/types": "8.0.6",
     "npm-high-impact": "1.13.0",
     "picocolors": "1.1.1",
     "semver": "7.8.5",
-    "zod": "4.6.6"
+    "zod": "4.6.7"
   }
 }
