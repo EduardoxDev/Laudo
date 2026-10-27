@@ -23,7 +23,7 @@ export interface ActionDeps {
   workspace: string;
   github?: (token: string, repo: string) => GitHubClient;
   /** Repassado ao runLaudo (nos testes: registro falso e data fixa). */
-  laudo?: Pick<RunOptions, 'registry' | 'now' | 'config'>;
+  laudo?: Pick<RunOptions, 'registry' | 'now' | 'config' | 'stryker'>;
 }
 
 /** Roda a Action e devolve o código de saída do processo. */
@@ -55,7 +55,7 @@ async function analyzeMode(deps: ActionDeps, comment: boolean): Promise<number> 
   let report: Report;
   let config: Config;
   try {
-    ({ report, config } = await runLaudo({ cwd, base, ...deps.laudo }));
+    ({ report, config } = await runLaudo({ cwd, base, mutate: io.bool('mutate', false), ...deps.laudo }));
   } catch (err) {
     const msg = (err as Error).message;
     // O erro mais comum: checkout raso, sem o commit da base.

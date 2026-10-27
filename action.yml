@@ -24,6 +24,11 @@ inputs:
   comment:
     description: No modo single, publica o comentário no PR.
     default: 'true'
+  mutate:
+    description: >-
+      Roda testes de mutação (Stryker) só nas linhas alteradas. Precisa do Stryker instalado no projeto
+      (npm ci antes) e roda os testes do PR, então use só onde o código do PR pode rodar.
+    default: 'false'
   comment-author:
     description: Login de quem publica o comentário; só comentários dele com o marcador do Laudo são atualizados.
     default: github-actions[bot]

@@ -39,6 +39,16 @@ export function findingSummary(report: Report): string {
     .join(' · ');
 }
 
+/** "5 de 8 mutantes pegos nas linhas alteradas (62%)", ou `null` se a mutação não rodou. */
+export function mutationLine(report: Report): string | null {
+  const m = report.mutation;
+  if (!m) return null;
+  if (m.timedOut) return 'interrompida por tempo (não conta no veredito)';
+  if (m.score === null) return 'nada para mutar nas linhas alteradas';
+  const total = m.killed + m.survived + m.noCoverage;
+  return `${m.killed} de ${plural(total, 'mutante pego', 'mutantes pegos')} nas linhas alteradas (${m.score}%)`;
+}
+
 /** "46 linhas em 3 arquivos · 312 linhas triviais escondidas", ou `null` sem plano. */
 export function planSummary(report: Report): string | null {
   if (report.reviewPlan.length === 0 && report.trivial.length === 0) return null;

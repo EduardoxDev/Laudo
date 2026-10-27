@@ -34,15 +34,25 @@ program
   .description('Analisa o diff entre a base e o HEAD e dá o veredito.')
   .option('-b, --base <ref>', 'ref da base (padrão: origin/main, origin/master, main ou master)')
   .option('-w, --worktree', 'inclui mudanças não commitadas e arquivos novos')
+  .option('-m, --mutate', 'roda testes de mutação nas linhas alteradas (precisa do Stryker no projeto)')
   .addOption(new Option('-f, --format <formato>', 'formato da saída').choices(Object.keys(FORMATS)).default('terminal'))
   .addOption(new Option('--fail-on <nível>', 'a partir de qual veredito o comando falha').choices(['block', 'review', 'never']))
   .option('-C, --cwd <pasta>', 'pasta do repositório', process.cwd())
   .option('--no-color', 'saída sem cores')
-  .action(async (opts: { base?: string; worktree?: boolean; format: Format; failOn?: 'block' | 'review' | 'never'; cwd: string }) => {
+  .action(
+    async (opts: {
+      base?: string;
+      worktree?: boolean;
+      mutate?: boolean;
+      format: Format;
+      failOn?: 'block' | 'review' | 'never';
+      cwd: string;
+    }) => {
     try {
       const { report, config } = await runLaudo({
         cwd: opts.cwd,
         worktree: !!opts.worktree,
+        mutate: !!opts.mutate,
         ...(opts.base ? { base: opts.base } : {}),
       });
       process.stdout.write(`${FORMATS[opts.format](report)}\n`);
@@ -55,6 +65,7 @@ program
       }
       process.exitCode = EXIT_ERROR;
     }
-  });
+    },
+  );
 
 await program.parseAsync();

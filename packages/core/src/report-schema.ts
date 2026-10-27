@@ -31,6 +31,16 @@ export const ReportSchema = z.object({
     z.object({ file: str(1_000), kind: fileKind, added: count, removed: count, zones: list(str(100), 20) }),
   ),
   trivial: list(z.object({ file: str(1_000), lines: count, why: z.enum(['format', 'rename', 'imports', 'moved', 'generated']) })),
+  mutation: z
+    .object({
+      killed: count,
+      survived: count,
+      noCoverage: count,
+      score: z.number().min(0).max(100).nullable(),
+      timedOut: z.boolean(),
+      runner: str(50),
+    })
+    .optional(),
   notes: list(str(2_000), 200),
   analyzers: z.record(str(100), z.enum(['ok', 'skipped', 'error'])),
   meta: z.object({

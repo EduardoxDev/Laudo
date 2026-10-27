@@ -120,6 +120,7 @@ describe('config e código de saída', () => {
       tests: { patterns: [] },
       deps: { minAgeDays: 30, minWeeklyDownloads: 100, allow: [], registry: 'https://registry.npmjs.org' },
       risk: { sensitive: [] },
+      mutation: { enabled: false, timeoutSeconds: 300, minScore: 50 },
       ignore: [],
     });
     expect(parseConfig({ deps: { allow: ['@acme/*'] } }).deps).toMatchObject({ allow: ['@acme/*'], minAgeDays: 30 });

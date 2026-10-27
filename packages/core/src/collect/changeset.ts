@@ -12,6 +12,9 @@ const MAX_FILE_CHARS = 1024 * 1024;
 const READ_CONCURRENCY = 8;
 const DEFAULT_BASES = ['origin/main', 'origin/master', 'main', 'master'];
 
+/** Pasta do Laudo dentro do projeto (cache do Stryker). Nunca entra no laudo; vale pôr no .gitignore. */
+export const LAUDO_DIR = '.laudo';
+
 export interface CollectOptions {
   root: string;
   config: Config;
@@ -41,7 +44,7 @@ export async function collectChangeSet(opts: CollectOptions): Promise<ChangeSet>
   }
   const hunks = parseHunks(await git(root, ['diff', '-U0', '--no-color', '--no-ext-diff', '-M', ...range]));
 
-  const relevant = entries.filter((e) => !matchesAny(e.path, config.ignore));
+  const relevant = entries.filter((e) => !e.path.startsWith(`${LAUDO_DIR}/`) && !matchesAny(e.path, config.ignore));
   const ctx: BuildCtx = { root, base, head: headSha, worktree: !!opts.worktree, config, hunks };
   const files = await mapLimit(relevant, READ_CONCURRENCY, (e) => buildFile(e, ctx));
 

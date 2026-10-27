@@ -1,4 +1,5 @@
 import type { RegistryClient } from './analyzers/deps/registry.js';
+import type { StrykerRunner } from './analyzers/mutation/stryker.js';
 import type { Config } from './config.js';
 
 export type Level = 'pass' | 'review' | 'block';
@@ -62,6 +63,7 @@ export type RawFinding = Omit<Finding, 'id'>;
 export interface Context {
   config: Config;
   registry: RegistryClient;
+  stryker: StrykerRunner;
   /** "Agora", fixo durante a execução (e controlável nos testes). */
   now: Date;
   /** Registra algo que o relatório deve mencionar sem virar achado (ex.: arquivo que não deu para ler). */
@@ -87,15 +89,32 @@ export interface TrivialEntry {
   why: TrivialWhy;
 }
 
+/** Resultado dos testes de mutação nas linhas alteradas. */
+export interface MutationSummary {
+  /** Mutantes que algum teste pegou (inclui os que travaram os testes). */
+  killed: number;
+  /** Mutantes que passaram por testes sem nenhum falhar. */
+  survived: number;
+  /** Mutantes em linhas por onde nenhum teste passa. */
+  noCoverage: number;
+  /** % de mutantes pegos, ou `null` sem mutantes (ou quando o tempo acabou). */
+  score: number | null;
+  timedOut: boolean;
+  runner: string;
+}
+
 export interface AnalyzerOutput {
   findings: RawFinding[];
   reviewPlan?: PlanEntry[];
   trivial?: TrivialEntry[];
+  mutation?: MutationSummary;
+  /** O analisador decidiu não rodar (o motivo vai numa nota). */
+  status?: 'skipped';
 }
 
 export interface Analyzer {
   name: string;
-  appliesTo(cs: ChangeSet): boolean;
+  appliesTo(cs: ChangeSet, ctx: Context): boolean;
   run(cs: ChangeSet, ctx: Context): Promise<AnalyzerOutput>;
 }
 
@@ -109,6 +128,8 @@ export interface Report {
   /** Ordem sugerida de revisão: zonas sensíveis primeiro, depois código, depois o resto. */
   reviewPlan: PlanEntry[];
   trivial: TrivialEntry[];
+  /** Só existe quando a mutação rodou. */
+  mutation?: MutationSummary;
   notes: string[];
   analyzers: Record<string, AnalyzerStatus>;
   meta: {

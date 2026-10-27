@@ -18,5 +18,8 @@ export { parseReport, ReportSchema } from './report-schema.js';
 export { RULES, RULES_URL, type RuleId, type RuleInfo } from './rules.js';
 export { trivialKind } from './analyzers/risk-map/trivial.js';
 export { zonesFor, ZONES } from './analyzers/risk-map/zones.js';
+export { changedRanges, toMutatePattern, type LineRange } from './analyzers/mutation/ranges.js';
+export { mutationFindings, parseStrykerReport, summarize } from './analyzers/mutation/report.js';
+export { findStryker, nodeStrykerRunner, strykerConfig, type StrykerRun, type StrykerRunner } from './analyzers/mutation/stryker.js';
 export { VERSION } from './version.js';
 export type * from './types.js';

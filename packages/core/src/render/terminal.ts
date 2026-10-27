@@ -1,6 +1,6 @@
 import pc from 'picocolors';
 import type { Finding, PlanEntry, Report } from '../types.js';
-import { findingSummary, KIND_LABEL, plural, planSummary, seconds, short } from './common.js';
+import { findingSummary, KIND_LABEL, mutationLine, plural, planSummary, seconds, short } from './common.js';
 
 const VERDICT = {
   pass: { icon: '✔', label: 'APROVADO', color: pc.green },
@@ -30,6 +30,9 @@ export function renderTerminal(report: Report): string {
       lines.push(pc.dim(`     … e mais ${plural(report.reviewPlan.length - PLAN_SHOWN, 'arquivo', 'arquivos')}`));
     }
   }
+
+  const mutation = mutationLine(report);
+  if (mutation) lines.push('', `${pc.bold('Mutação:')} ${mutation}`);
 
   for (const f of report.findings) lines.push('', ...renderFinding(f));
 

@@ -178,11 +178,17 @@ Os analisadores devolvem `{ findings, reviewPlan?, trivial? }`; só o `risk-map`
 
 #### `mutation`
 
-1. Junta os hunks dos arquivos `kind: source` em intervalos (`src/cart.ts:12-30`).
-2. Escreve uma config temporária do Stryker com `mutate` = esses intervalos e `incremental: true` (arquivo guardado em `.laudo/stryker-incremental.json`, reaproveitado entre execuções no CI via cache).
-3. Roda `npx stryker run` como subprocesso, com `AbortSignal` ligado ao limite de tempo.
-4. Lê o relatório JSON do Stryker → mutantes sobreviventes viram `Finding`s com o trecho mutado como evidência.
-5. Detecta o executor de testes (vitest/jest/mocha) pelo `package.json`. Se não encontrar, o analisador é pulado com aviso.
+Desligado por padrão (`mutation.enabled`, `--mutate`, entrada `mutate` da Action).
+
+1. **Intervalos** (`ranges.ts`): só as linhas que o diff **colocou** em código-fonte JS/TS (sem testes nem `.d.ts`), juntando trechos a até 2 linhas de distância → `src/cart.ts:12-30`.
+2. **Stryker do projeto** (`stryker.ts`): usa `node_modules/@stryker-mutator/core` do projeto analisado, e não um embutido no Laudo. Assim o runner (vitest, jest, mocha) e o executor de testes são os do projeto, nas versões dele. O runner é o pacote `@stryker-mutator/<x>-runner` instalado; sem nenhum, usa `npm test` (`command`, sem cobertura por teste). Sem Stryker, a mutação é pulada com uma nota que diz o que instalar.
+3. **Disco = HEAD:** o Stryker muta os arquivos como estão no disco. Comparando com o HEAD, se algum arquivo a mutar tiver mudança não commitada, a mutação é pulada; com `--worktree`, o disco é o próprio alvo.
+4. **Config de uma execução** (num diretório temporário): `mutate` = os intervalos, `coverageAnalysis: perTest`, `ignoreStatic`, relatório `json`, `incremental` com o arquivo em `.laudo/stryker-incremental.json` (vale pôr em cache no CI). O `.laudo/` nunca entra no laudo.
+5. **Processo:** `node <bin do stryker> run <config>`, morto ao passar de `mutation.timeoutSeconds`. Tempo esgotado → nota, `mutation.timedOut: true` e nenhum achado: nunca bloqueia.
+6. **Leitura** (`report.ts`, `mutation-testing-report-schema`): `Killed` e `Timeout` contam como pegos; `Survived` e `NoCoverage` como escapados; `CompileError`, `RuntimeError`, `Ignored` e `Pending` ficam fora da nota. Nota = pegos ÷ (pegos + escapados).
+7. **Achados:** nenhum se a nota ≥ `minScore`, porque um ou outro sobrevivente é normal. Abaixo disso, um `mutation/survived` por arquivo (Revisar), com até 5 exemplos, primeiro um por linha. Com nota 0 num PR que também mexeu nos testes, o achado bloqueia.
+
+Medido num projeto de exemplo (Vitest, 6 linhas novas, 16 mutantes): 8,4 s na primeira execução e 5,3 s na segunda, com o incremental.
 
 ### 5.3 Veredito (`verdict.ts`)
 

@@ -16750,8 +16750,8 @@ function escapeCommand(s) {
 }
 
 // packages/action/src/run.ts
-var import_node_fs3 = require("node:fs");
-var import_node_path5 = require("node:path");
+var import_node_fs5 = require("node:fs");
+var import_node_path8 = require("node:path");
 
 // packages/core/dist/run.js
 var import_node_crypto = require("node:crypto");
@@ -50485,27 +50485,14 @@ async function gatherFacts(item, registry2) {
   return { ...base, info, weeklyDownloads, created };
 }
 
-// packages/core/dist/analyzers/risk-map/lines.js
-function changedLines(file2) {
-  const before = file2.before?.split(/\r?\n/) ?? [];
-  const after = file2.after?.split(/\r?\n/) ?? [];
-  const added = [];
-  const removed = [];
-  for (const h of file2.hunks) {
-    removed.push(...before.slice(Math.max(h.oldStart - 1, 0), h.oldStart - 1 + h.oldLines));
-    added.push(...after.slice(Math.max(h.newStart - 1, 0), h.newStart - 1 + h.newLines));
-  }
-  return { added, removed };
-}
-function lineCounts(file2) {
-  let added = 0;
-  let removed = 0;
-  for (const h of file2.hunks) {
-    added += h.newLines;
-    removed += h.oldLines;
-  }
-  return { added, removed };
-}
+// packages/core/dist/analyzers/mutation/index.js
+var import_node_fs4 = require("node:fs");
+var import_node_os2 = require("node:os");
+var import_node_path6 = require("node:path");
+
+// packages/core/dist/collect/changeset.js
+var import_promises = require("node:fs/promises");
+var import_node_path3 = require("node:path");
 
 // packages/core/dist/collect/classify.js
 var CODE_EXT = /\.[cm]?[jt]sx?$/;
@@ -50529,6 +50516,453 @@ function classify(path, testPatterns = []) {
 }
 function isJsLike(path) {
   return CODE_EXT.test(path);
+}
+
+// packages/core/dist/collect/diff.js
+function parseNameStatus(out) {
+  const parts = out.split("\0");
+  const entries = [];
+  for (let i = 0; i < parts.length; ) {
+    const code2 = parts[i++];
+    if (!code2)
+      continue;
+    const letter = code2[0];
+    if (letter === "R" || letter === "C") {
+      const oldPath = parts[i++];
+      const path = parts[i++];
+      entries.push(letter === "R" ? { status: "renamed", path, oldPath } : { status: "added", path });
+    } else {
+      const path = parts[i++];
+      const status = letter === "A" ? "added" : letter === "D" ? "deleted" : "modified";
+      entries.push({ status, path });
+    }
+  }
+  return entries;
+}
+var HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
+function parseHunks(diff) {
+  const byPath = /* @__PURE__ */ new Map();
+  let oldPath = null;
+  let current = null;
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("diff --git ")) {
+      oldPath = null;
+      current = null;
+    } else if (line.startsWith("--- ")) {
+      oldPath = line === "--- /dev/null" ? null : stripPrefix(line.slice(4));
+    } else if (line.startsWith("+++ ")) {
+      const newPath = line === "+++ /dev/null" ? oldPath : stripPrefix(line.slice(4));
+      if (newPath) {
+        current = byPath.get(newPath) ?? [];
+        byPath.set(newPath, current);
+      }
+    } else if (current && line.startsWith("@@")) {
+      const m = HUNK_HEADER.exec(line);
+      if (m) {
+        current.push({
+          oldStart: Number(m[1]),
+          oldLines: m[2] === void 0 ? 1 : Number(m[2]),
+          newStart: Number(m[3]),
+          newLines: m[4] === void 0 ? 1 : Number(m[4])
+        });
+      }
+    }
+  }
+  return byPath;
+}
+function stripPrefix(p) {
+  const clean = p.replace(/\t$/, "");
+  return clean.startsWith("a/") || clean.startsWith("b/") ? clean.slice(2) : clean;
+}
+
+// packages/core/dist/collect/git.js
+var import_node_child_process = require("node:child_process");
+var import_node_util = require("node:util");
+var run = (0, import_node_util.promisify)(import_node_child_process.execFile);
+var GitError = class extends Error {
+  name = "GitError";
+};
+async function git(cwd, args) {
+  try {
+    const { stdout } = await run("git", ["-c", "core.quotePath=false", ...args], {
+      cwd,
+      encoding: "utf8",
+      maxBuffer: 256 * 1024 * 1024,
+      windowsHide: true
+    });
+    return stdout;
+  } catch (err) {
+    const e = err;
+    throw new GitError(`git ${args[0]} falhou: ${(e.stderr || e.message).trim()}`);
+  }
+}
+async function tryGit(cwd, args) {
+  try {
+    return await git(cwd, args);
+  } catch {
+    return null;
+  }
+}
+
+// packages/core/dist/collect/changeset.js
+var MAX_FILE_CHARS = 1024 * 1024;
+var READ_CONCURRENCY = 8;
+var DEFAULT_BASES = ["origin/main", "origin/master", "main", "master"];
+var LAUDO_DIR = ".laudo";
+async function repoRoot(cwd) {
+  const out = await tryGit(cwd, ["rev-parse", "--show-toplevel"]);
+  if (out === null)
+    throw new GitError(`${cwd} n\xE3o est\xE1 dentro de um reposit\xF3rio git.`);
+  return out.trim();
+}
+async function collectChangeSet(opts) {
+  const { root, config: config2 } = opts;
+  const baseRef = await resolveBase(root, opts.base);
+  const headSha = (await git(root, ["rev-parse", "HEAD"])).trim();
+  const base = (await git(root, ["merge-base", baseRef, headSha])).trim();
+  const range = opts.worktree ? [base] : [base, headSha];
+  const entries = parseNameStatus(await git(root, ["diff", "--name-status", "-z", "-M", ...range]));
+  if (opts.worktree) {
+    const untracked = await git(root, ["ls-files", "--others", "--exclude-standard", "-z"]);
+    for (const path of untracked.split("\0").filter(Boolean))
+      entries.push({ status: "added", path });
+  }
+  const hunks = parseHunks(await git(root, ["diff", "-U0", "--no-color", "--no-ext-diff", "-M", ...range]));
+  const relevant = entries.filter((e) => !e.path.startsWith(`${LAUDO_DIR}/`) && !matchesAny(e.path, config2.ignore));
+  const ctx = { root, base, head: headSha, worktree: !!opts.worktree, config: config2, hunks };
+  const files = await mapLimit(relevant, READ_CONCURRENCY, (e) => buildFile(e, ctx));
+  return {
+    root,
+    baseRef,
+    base,
+    head: opts.worktree ? "WORKTREE" : headSha,
+    files,
+    workspacePackages: await workspacePackages(root)
+  };
+}
+async function resolveBase(root, wanted) {
+  const candidates = wanted ? [wanted] : DEFAULT_BASES;
+  for (const ref of candidates) {
+    if (await tryGit(root, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]) !== null)
+      return ref;
+  }
+  throw new GitError(wanted ? `A base "${wanted}" n\xE3o existe neste reposit\xF3rio.` : `N\xE3o achei a base (tentei ${DEFAULT_BASES.join(", ")}). Use --base <ref>.`);
+}
+async function buildFile(e, ctx) {
+  const beforeBlob = e.status === "added" ? null : await readBlob(ctx.root, ctx.base, e.oldPath ?? e.path);
+  const afterBlob = e.status === "deleted" ? null : ctx.worktree ? await readWorktree(ctx.root, e.path) : await readBlob(ctx.root, ctx.head, e.path);
+  const before = beforeBlob && "text" in beforeBlob ? beforeBlob.text : null;
+  const after = afterBlob && "text" in afterBlob ? afterBlob.text : null;
+  let hunks = ctx.hunks.get(e.path) ?? [];
+  if (hunks.length === 0 && e.status === "added" && after !== null) {
+    hunks = [{ oldStart: 0, oldLines: 0, newStart: 1, newLines: after.split("\n").length }];
+  }
+  const file2 = {
+    path: e.path,
+    status: e.status,
+    kind: classify(e.path, ctx.config.tests.patterns),
+    before,
+    after,
+    hunks
+  };
+  if (e.oldPath)
+    file2.oldPath = e.oldPath;
+  for (const blob of [beforeBlob, afterBlob])
+    if (blob && "skipped" in blob)
+      file2.skipped = blob.skipped;
+  return file2;
+}
+async function readBlob(root, sha, path) {
+  const out = await tryGit(root, ["show", `${sha}:${path}`]);
+  return out === null ? null : checkContent(out);
+}
+async function readWorktree(root, path) {
+  try {
+    return checkContent(await (0, import_promises.readFile)((0, import_node_path3.join)(root, path), "utf8"));
+  } catch {
+    return null;
+  }
+}
+function checkContent(text2) {
+  if (text2.length > MAX_FILE_CHARS)
+    return { skipped: "too-large" };
+  if (text2.includes("\0"))
+    return { skipped: "binary" };
+  return { text: text2 };
+}
+async function workspacePackages(root) {
+  const out = await git(root, ["ls-files", "-z", "--", "*package.json"]);
+  const paths = out.split("\0").filter((p) => p === "package.json" || p.endsWith("/package.json"));
+  const names = await mapLimit(paths, READ_CONCURRENCY, async (p) => {
+    try {
+      const name = JSON.parse(await (0, import_promises.readFile)((0, import_node_path3.join)(root, p), "utf8")).name;
+      return typeof name === "string" ? name : null;
+    } catch {
+      return null;
+    }
+  });
+  return names.filter((n) => n !== null);
+}
+
+// packages/core/dist/analyzers/mutation/ranges.js
+var MERGE_GAP = 2;
+function isMutable(file2) {
+  return file2.kind === "source" && isJsLike(file2.path) && file2.after !== null && !file2.skipped && !file2.path.endsWith(".d.ts");
+}
+function changedRanges(files) {
+  const out = [];
+  for (const file2 of files.filter(isMutable)) {
+    const spans = file2.hunks.filter((h) => h.newLines > 0).map((h) => ({ start: h.newStart, end: h.newStart + h.newLines - 1 })).sort((a, b) => a.start - b.start);
+    let cur = null;
+    for (const s of spans) {
+      if (cur && s.start <= cur.end + MERGE_GAP + 1)
+        cur.end = Math.max(cur.end, s.end);
+      else {
+        if (cur)
+          out.push({ file: file2.path, ...cur });
+        cur = { ...s };
+      }
+    }
+    if (cur)
+      out.push({ file: file2.path, ...cur });
+  }
+  return out;
+}
+function toMutatePattern(r) {
+  return `${r.file}:${r.start}-${r.end}`;
+}
+
+// packages/core/dist/analyzers/mutation/report.js
+var import_node_path4 = require("node:path");
+var SNIPPET = 60;
+function parseStrykerReport(json2, root) {
+  const report = json2;
+  let killed = 0;
+  const escaped = [];
+  for (const [rawPath, file2] of Object.entries(report.files ?? {})) {
+    const path = normalizePath(rawPath, root);
+    const lines = (file2.source ?? "").split(/\r?\n/);
+    for (const m of file2.mutants ?? []) {
+      if (m.status === "Killed" || m.status === "Timeout")
+        killed++;
+      else if (m.status === "Survived" || m.status === "NoCoverage") {
+        const line = m.location?.start?.line ?? 0;
+        escaped.push({
+          file: path,
+          line,
+          mutator: m.mutatorName ?? "?",
+          original: snippet(lines, m.location),
+          replacement: oneLine(m.replacement ?? ""),
+          status: m.status
+        });
+      }
+    }
+  }
+  escaped.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+  return { killed, escaped };
+}
+function summarize(parsed, extra) {
+  const survived = parsed.escaped.filter((e) => e.status === "Survived").length;
+  const noCoverage = parsed.escaped.length - survived;
+  const total = parsed.killed + parsed.escaped.length;
+  return {
+    killed: parsed.killed,
+    survived,
+    noCoverage,
+    score: total === 0 ? null : Math.round(parsed.killed / total * 100),
+    ...extra
+  };
+}
+var MAX_EXAMPLES = 5;
+function mutationFindings(parsed, summary, opts) {
+  if (summary.score === null || summary.score >= opts.minScore)
+    return [];
+  const level2 = summary.score === 0 && opts.testsChanged ? "block" : "review";
+  const byFile = /* @__PURE__ */ new Map();
+  for (const e of parsed.escaped)
+    byFile.set(e.file, [...byFile.get(e.file) ?? [], e]);
+  return [...byFile].map(([file2, list2]) => {
+    const seen = /* @__PURE__ */ new Set();
+    const firstPerLine = list2.filter((e) => !seen.has(e.line) && seen.add(e.line));
+    const examples = [...firstPerLine, ...list2.filter((e) => !firstPerLine.includes(e))].slice(0, MAX_EXAMPLES).sort((a, b) => a.line - b.line);
+    const details2 = examples.map((e) => e.status === "NoCoverage" ? `linha ${e.line}: nenhum teste passa por aqui` : `linha ${e.line}: trocar \`${e.original}\` por \`${e.replacement}\` n\xE3o quebra nenhum teste (${e.mutator})`);
+    if (list2.length > MAX_EXAMPLES)
+      details2.push(`\u2026 e mais ${list2.length - MAX_EXAMPLES}`);
+    const finding = {
+      rule: "mutation/survived",
+      level: level2,
+      title: `Os testes n\xE3o pegam bugs nas linhas alteradas de ${file2} (${list2.length} ${list2.length === 1 ? "mutante escapou" : "mutantes escaparam"})`,
+      file: file2,
+      details: details2,
+      hint: level2 === "block" ? "Os testes mudaram neste PR, mas nenhum bug inserido de prop\xF3sito nas linhas alteradas foi pego: eles n\xE3o provam esta mudan\xE7a." : "Escreva um teste que falhe com essas trocas. Se nenhum teste falha, o comportamento dessas linhas n\xE3o est\xE1 garantido."
+    };
+    if (list2[0].line > 0)
+      finding.line = list2[0].line;
+    return finding;
+  });
+}
+function normalizePath(p, root) {
+  const rel = (0, import_node_path4.isAbsolute)(p) ? (0, import_node_path4.relative)(root, p) : p;
+  return rel.replace(/\\/g, "/").replace(/^\.\//, "");
+}
+function snippet(lines, loc) {
+  const sl = loc?.start?.line;
+  const sc = loc?.start?.column;
+  if (!sl || !sc)
+    return "?";
+  const line = lines[sl - 1] ?? "";
+  const sameLine = loc?.end?.line === sl && loc.end.column;
+  const text2 = sameLine ? line.slice(sc - 1, loc.end.column - 1) : `${line.slice(sc - 1)}\u2026`;
+  return oneLine(text2);
+}
+function oneLine(s) {
+  const flat = s.replace(/\s+/g, " ").trim();
+  return flat.length > SNIPPET ? `${flat.slice(0, SNIPPET - 1)}\u2026` : flat;
+}
+
+// packages/core/dist/analyzers/mutation/stryker.js
+var import_node_child_process2 = require("node:child_process");
+var import_node_fs3 = require("node:fs");
+var import_node_path5 = require("node:path");
+var RUNNERS = ["vitest", "jest", "mocha"];
+function findStryker(root) {
+  const corePkg = (0, import_node_path5.join)(root, "node_modules", "@stryker-mutator", "core", "package.json");
+  if (!(0, import_node_fs3.existsSync)(corePkg)) {
+    return { missing: "o projeto n\xE3o tem o Stryker instalado (npm install -D @stryker-mutator/core e o runner do seu executor de testes, ex.: @stryker-mutator/vitest-runner)" };
+  }
+  const pkg = JSON.parse((0, import_node_fs3.readFileSync)(corePkg, "utf8"));
+  const binRel = typeof pkg.bin === "string" ? pkg.bin : pkg.bin?.stryker ?? "bin/stryker.js";
+  const runner = RUNNERS.find((r) => (0, import_node_fs3.existsSync)((0, import_node_path5.join)(root, "node_modules", "@stryker-mutator", `${r}-runner`))) ?? "command";
+  return { bin: (0, import_node_path5.join)(root, "node_modules", "@stryker-mutator", "core", binRel), version: pkg.version ?? "?", runner };
+}
+function strykerConfig(mutate, runner, paths) {
+  return {
+    mutate,
+    testRunner: runner,
+    ...runner === "command" ? { commandRunner: { command: "npm test" } } : {},
+    // perTest roda só os testes que passam pelo mutante; o runner "command" não sabe fazer isso.
+    coverageAnalysis: runner === "command" ? "off" : "perTest",
+    reporters: ["json"],
+    jsonReporter: { fileName: paths.report },
+    incremental: true,
+    incrementalFile: paths.incremental,
+    tempDirName: paths.tempDir,
+    cleanTempDir: true,
+    ignoreStatic: true,
+    logLevel: "warn",
+    fileLogLevel: "off",
+    thresholds: { high: 80, low: 60, break: null }
+  };
+}
+var OUTPUT_TAIL = 4e3;
+var nodeStrykerRunner = {
+  run: ({ cwd, bin, configFile, timeoutMs }) => new Promise((resolve) => {
+    const child = (0, import_node_child_process2.spawn)(process.execPath, [bin, "run", configFile], {
+      cwd,
+      env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let output2 = "";
+    const keep = (chunk) => {
+      output2 = (output2 + chunk.toString()).slice(-OUTPUT_TAIL);
+    };
+    child.stdout.on("data", keep);
+    child.stderr.on("data", keep);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+      setTimeout(() => child.kill("SIGKILL"), 5e3).unref();
+    }, timeoutMs);
+    child.on("error", (err) => {
+      clearTimeout(timer);
+      resolve({ code: null, timedOut, output: `${output2}
+${err.message}` });
+    });
+    child.on("close", (code2) => {
+      clearTimeout(timer);
+      resolve({ code: code2, timedOut, output: output2 });
+    });
+  })
+};
+
+// packages/core/dist/analyzers/mutation/index.js
+var mutation = {
+  name: "mutation",
+  appliesTo: (cs, ctx) => ctx.config.mutation.enabled && cs.files.some(isMutable),
+  async run(cs, ctx) {
+    const skip = (why) => {
+      ctx.note(`Muta\xE7\xE3o n\xE3o rodou: ${why}.`);
+      return { findings: [], status: "skipped" };
+    };
+    const ranges = changedRanges(cs.files);
+    if (ranges.length === 0)
+      return skip("nenhuma linha de c\xF3digo-fonte foi colocada ou alterada");
+    const stryker = findStryker(cs.root);
+    if ("missing" in stryker)
+      return skip(stryker.missing);
+    if (cs.head !== "WORKTREE") {
+      const dirty = await git(cs.root, ["status", "--porcelain", "--", ...new Set(ranges.map((r) => r.file))]);
+      if (dirty.trim())
+        return skip("h\xE1 mudan\xE7as n\xE3o commitadas nos arquivos alterados; commite ou use --worktree");
+    }
+    const work = (0, import_node_fs4.mkdtempSync)((0, import_node_path6.join)((0, import_node_os2.tmpdir)(), "laudo-stryker-"));
+    try {
+      const paths = {
+        report: (0, import_node_path6.join)(work, "mutation.json"),
+        incremental: `${LAUDO_DIR}/stryker-incremental.json`,
+        tempDir: `${LAUDO_DIR}/stryker-tmp`
+      };
+      (0, import_node_fs4.mkdirSync)((0, import_node_path6.join)(cs.root, LAUDO_DIR), { recursive: true });
+      const configFile = (0, import_node_path6.join)(work, "stryker.config.json");
+      (0, import_node_fs4.writeFileSync)(configFile, JSON.stringify(strykerConfig(ranges.map(toMutatePattern), stryker.runner, paths), null, 2));
+      const timeoutMs = ctx.config.mutation.timeoutSeconds * 1e3;
+      const run2 = await ctx.stryker.run({ cwd: cs.root, bin: stryker.bin, configFile, timeoutMs });
+      if (run2.timedOut) {
+        ctx.note(`Muta\xE7\xE3o passou do limite de ${ctx.config.mutation.timeoutSeconds} s e foi interrompida; n\xE3o conta no veredito.`);
+        return { findings: [], mutation: { killed: 0, survived: 0, noCoverage: 0, score: null, timedOut: true, runner: stryker.runner } };
+      }
+      let report;
+      try {
+        report = JSON.parse((0, import_node_fs4.readFileSync)(paths.report, "utf8"));
+      } catch {
+        const tail = run2.output.trim().split("\n").slice(-5).join(" | ");
+        return skip(`o Stryker ${stryker.version} terminou com c\xF3digo ${run2.code} sem relat\xF3rio (${tail})`);
+      }
+      const parsed = parseStrykerReport(report, cs.root);
+      const summary = summarize(parsed, { timedOut: false, runner: stryker.runner });
+      const testsChanged = cs.files.some((f) => f.kind === "test");
+      return {
+        findings: mutationFindings(parsed, summary, { minScore: ctx.config.mutation.minScore, testsChanged }),
+        mutation: summary
+      };
+    } finally {
+      (0, import_node_fs4.rmSync)(work, { recursive: true, force: true });
+    }
+  }
+};
+
+// packages/core/dist/analyzers/risk-map/lines.js
+function changedLines(file2) {
+  const before = file2.before?.split(/\r?\n/) ?? [];
+  const after = file2.after?.split(/\r?\n/) ?? [];
+  const added = [];
+  const removed = [];
+  for (const h of file2.hunks) {
+    removed.push(...before.slice(Math.max(h.oldStart - 1, 0), h.oldStart - 1 + h.oldLines));
+    added.push(...after.slice(Math.max(h.newStart - 1, 0), h.newStart - 1 + h.newLines));
+  }
+  return { added, removed };
+}
+function lineCounts(file2) {
+  let added = 0;
+  let removed = 0;
+  for (const h of file2.hunks) {
+    added += h.newLines;
+    removed += h.oldLines;
+  }
+  return { added, removed };
 }
 
 // packages/core/dist/util/ast.js
@@ -51424,198 +51858,9 @@ function parse2(code2, filename) {
   }
 }
 
-// packages/core/dist/collect/changeset.js
-var import_promises = require("node:fs/promises");
-var import_node_path3 = require("node:path");
-
-// packages/core/dist/collect/diff.js
-function parseNameStatus(out) {
-  const parts = out.split("\0");
-  const entries = [];
-  for (let i = 0; i < parts.length; ) {
-    const code2 = parts[i++];
-    if (!code2)
-      continue;
-    const letter = code2[0];
-    if (letter === "R" || letter === "C") {
-      const oldPath = parts[i++];
-      const path = parts[i++];
-      entries.push(letter === "R" ? { status: "renamed", path, oldPath } : { status: "added", path });
-    } else {
-      const path = parts[i++];
-      const status = letter === "A" ? "added" : letter === "D" ? "deleted" : "modified";
-      entries.push({ status, path });
-    }
-  }
-  return entries;
-}
-var HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
-function parseHunks(diff) {
-  const byPath = /* @__PURE__ */ new Map();
-  let oldPath = null;
-  let current = null;
-  for (const line of diff.split("\n")) {
-    if (line.startsWith("diff --git ")) {
-      oldPath = null;
-      current = null;
-    } else if (line.startsWith("--- ")) {
-      oldPath = line === "--- /dev/null" ? null : stripPrefix(line.slice(4));
-    } else if (line.startsWith("+++ ")) {
-      const newPath = line === "+++ /dev/null" ? oldPath : stripPrefix(line.slice(4));
-      if (newPath) {
-        current = byPath.get(newPath) ?? [];
-        byPath.set(newPath, current);
-      }
-    } else if (current && line.startsWith("@@")) {
-      const m = HUNK_HEADER.exec(line);
-      if (m) {
-        current.push({
-          oldStart: Number(m[1]),
-          oldLines: m[2] === void 0 ? 1 : Number(m[2]),
-          newStart: Number(m[3]),
-          newLines: m[4] === void 0 ? 1 : Number(m[4])
-        });
-      }
-    }
-  }
-  return byPath;
-}
-function stripPrefix(p) {
-  const clean = p.replace(/\t$/, "");
-  return clean.startsWith("a/") || clean.startsWith("b/") ? clean.slice(2) : clean;
-}
-
-// packages/core/dist/collect/git.js
-var import_node_child_process = require("node:child_process");
-var import_node_util = require("node:util");
-var run = (0, import_node_util.promisify)(import_node_child_process.execFile);
-var GitError = class extends Error {
-  name = "GitError";
-};
-async function git(cwd, args) {
-  try {
-    const { stdout } = await run("git", ["-c", "core.quotePath=false", ...args], {
-      cwd,
-      encoding: "utf8",
-      maxBuffer: 256 * 1024 * 1024,
-      windowsHide: true
-    });
-    return stdout;
-  } catch (err) {
-    const e = err;
-    throw new GitError(`git ${args[0]} falhou: ${(e.stderr || e.message).trim()}`);
-  }
-}
-async function tryGit(cwd, args) {
-  try {
-    return await git(cwd, args);
-  } catch {
-    return null;
-  }
-}
-
-// packages/core/dist/collect/changeset.js
-var MAX_FILE_CHARS = 1024 * 1024;
-var READ_CONCURRENCY = 8;
-var DEFAULT_BASES = ["origin/main", "origin/master", "main", "master"];
-async function repoRoot(cwd) {
-  const out = await tryGit(cwd, ["rev-parse", "--show-toplevel"]);
-  if (out === null)
-    throw new GitError(`${cwd} n\xE3o est\xE1 dentro de um reposit\xF3rio git.`);
-  return out.trim();
-}
-async function collectChangeSet(opts) {
-  const { root, config: config2 } = opts;
-  const baseRef = await resolveBase(root, opts.base);
-  const headSha = (await git(root, ["rev-parse", "HEAD"])).trim();
-  const base = (await git(root, ["merge-base", baseRef, headSha])).trim();
-  const range = opts.worktree ? [base] : [base, headSha];
-  const entries = parseNameStatus(await git(root, ["diff", "--name-status", "-z", "-M", ...range]));
-  if (opts.worktree) {
-    const untracked = await git(root, ["ls-files", "--others", "--exclude-standard", "-z"]);
-    for (const path of untracked.split("\0").filter(Boolean))
-      entries.push({ status: "added", path });
-  }
-  const hunks = parseHunks(await git(root, ["diff", "-U0", "--no-color", "--no-ext-diff", "-M", ...range]));
-  const relevant = entries.filter((e) => !matchesAny(e.path, config2.ignore));
-  const ctx = { root, base, head: headSha, worktree: !!opts.worktree, config: config2, hunks };
-  const files = await mapLimit(relevant, READ_CONCURRENCY, (e) => buildFile(e, ctx));
-  return {
-    root,
-    baseRef,
-    base,
-    head: opts.worktree ? "WORKTREE" : headSha,
-    files,
-    workspacePackages: await workspacePackages(root)
-  };
-}
-async function resolveBase(root, wanted) {
-  const candidates = wanted ? [wanted] : DEFAULT_BASES;
-  for (const ref of candidates) {
-    if (await tryGit(root, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]) !== null)
-      return ref;
-  }
-  throw new GitError(wanted ? `A base "${wanted}" n\xE3o existe neste reposit\xF3rio.` : `N\xE3o achei a base (tentei ${DEFAULT_BASES.join(", ")}). Use --base <ref>.`);
-}
-async function buildFile(e, ctx) {
-  const beforeBlob = e.status === "added" ? null : await readBlob(ctx.root, ctx.base, e.oldPath ?? e.path);
-  const afterBlob = e.status === "deleted" ? null : ctx.worktree ? await readWorktree(ctx.root, e.path) : await readBlob(ctx.root, ctx.head, e.path);
-  const before = beforeBlob && "text" in beforeBlob ? beforeBlob.text : null;
-  const after = afterBlob && "text" in afterBlob ? afterBlob.text : null;
-  let hunks = ctx.hunks.get(e.path) ?? [];
-  if (hunks.length === 0 && e.status === "added" && after !== null) {
-    hunks = [{ oldStart: 0, oldLines: 0, newStart: 1, newLines: after.split("\n").length }];
-  }
-  const file2 = {
-    path: e.path,
-    status: e.status,
-    kind: classify(e.path, ctx.config.tests.patterns),
-    before,
-    after,
-    hunks
-  };
-  if (e.oldPath)
-    file2.oldPath = e.oldPath;
-  for (const blob of [beforeBlob, afterBlob])
-    if (blob && "skipped" in blob)
-      file2.skipped = blob.skipped;
-  return file2;
-}
-async function readBlob(root, sha, path) {
-  const out = await tryGit(root, ["show", `${sha}:${path}`]);
-  return out === null ? null : checkContent(out);
-}
-async function readWorktree(root, path) {
-  try {
-    return checkContent(await (0, import_promises.readFile)((0, import_node_path3.join)(root, path), "utf8"));
-  } catch {
-    return null;
-  }
-}
-function checkContent(text2) {
-  if (text2.length > MAX_FILE_CHARS)
-    return { skipped: "too-large" };
-  if (text2.includes("\0"))
-    return { skipped: "binary" };
-  return { text: text2 };
-}
-async function workspacePackages(root) {
-  const out = await git(root, ["ls-files", "-z", "--", "*package.json"]);
-  const paths = out.split("\0").filter((p) => p === "package.json" || p.endsWith("/package.json"));
-  const names = await mapLimit(paths, READ_CONCURRENCY, async (p) => {
-    try {
-      const name = JSON.parse(await (0, import_promises.readFile)((0, import_node_path3.join)(root, p), "utf8")).name;
-      return typeof name === "string" ? name : null;
-    } catch {
-      return null;
-    }
-  });
-  return names.filter((n) => n !== null);
-}
-
 // packages/core/dist/config.js
 var import_promises2 = require("node:fs/promises");
-var import_node_path4 = require("node:path");
+var import_node_path7 = require("node:path");
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -71355,6 +71600,14 @@ var ConfigSchema = external_exports.object({
     /** Caminhos (glob) que contam como zona sensível, além das zonas embutidas. */
     sensitive: external_exports.array(external_exports.string()).default([])
   }).prefault({}),
+  mutation: external_exports.object({
+    /** Desligada por padrão: roda os testes do projeto várias vezes e leva minutos. */
+    enabled: external_exports.boolean().default(false),
+    /** Passou disso, a mutação é interrompida e não conta no veredito. */
+    timeoutSeconds: external_exports.number().int().positive().default(300),
+    /** % mínima de mutantes pegos nas linhas alteradas; abaixo disso, pede revisão. */
+    minScore: external_exports.number().min(0).max(100).default(50)
+  }).prefault({}),
   ignore: external_exports.array(external_exports.string()).default([])
 });
 var CONFIG_FILE = "laudo.config.json";
@@ -71372,7 +71625,7 @@ ${external_exports.prettifyError(result2.error)}`);
 async function loadConfig(root) {
   let text2;
   try {
-    text2 = await (0, import_promises2.readFile)((0, import_node_path4.join)(root, CONFIG_FILE), "utf8");
+    text2 = await (0, import_promises2.readFile)((0, import_node_path7.join)(root, CONFIG_FILE), "utf8");
   } catch (err) {
     if (err.code === "ENOENT")
       return parseConfig({});
@@ -71409,17 +71662,19 @@ function compareFindings(a, b) {
 var VERSION = "0.1.0";
 
 // packages/core/dist/run.js
-var ANALYZERS = [testIntegrity, deps, riskMap];
+var ANALYZERS = [testIntegrity, deps, riskMap, mutation];
 async function runLaudo(opts) {
   const started = performance.now();
   const root = await repoRoot(opts.cwd);
-  const config2 = opts.config ?? await loadConfig(root);
+  const loaded = opts.config ?? await loadConfig(root);
+  const config2 = opts.mutate ? { ...loaded, mutation: { ...loaded.mutation, enabled: true } } : loaded;
   const base = opts.base ?? config2.base;
   const cs = await collectChangeSet({ root, config: config2, worktree: !!opts.worktree, ...base ? { base } : {} });
   const notes = [];
   const ctx = {
     config: config2,
     registry: opts.registry ?? new NpmRegistry({ registry: config2.deps.registry, cache: new FileCache(defaultCacheFile()) }),
+    stryker: opts.stryker ?? nodeStrykerRunner,
     now: opts.now ?? /* @__PURE__ */ new Date(),
     note: (message) => notes.push(message)
   };
@@ -71427,8 +71682,9 @@ async function runLaudo(opts) {
   const findings = [];
   const reviewPlan = [];
   const trivial = [];
+  let mutationSummary;
   const active = (opts.analyzers ?? ANALYZERS).filter((a) => {
-    const applies = a.appliesTo(cs);
+    const applies = a.appliesTo(cs, ctx);
     if (!applies)
       analyzers[a.name] = "skipped";
     return applies;
@@ -71437,10 +71693,11 @@ async function runLaudo(opts) {
   results.forEach((result2, i) => {
     const a = active[i];
     if (result2.status === "fulfilled") {
-      analyzers[a.name] = "ok";
+      analyzers[a.name] = result2.value.status ?? "ok";
       findings.push(...result2.value.findings.map(withId));
       reviewPlan.push(...result2.value.reviewPlan ?? []);
       trivial.push(...result2.value.trivial ?? []);
+      mutationSummary ??= result2.value.mutation;
     } else {
       analyzers[a.name] = "error";
       notes.push(`O analisador ${a.name} falhou: ${result2.reason?.message ?? String(result2.reason)}`);
@@ -71453,6 +71710,7 @@ async function runLaudo(opts) {
     findings,
     reviewPlan,
     trivial,
+    ...mutationSummary ? { mutation: mutationSummary } : {},
     notes,
     analyzers,
     meta: {
@@ -71506,6 +71764,17 @@ function findingSummary(report) {
     return "nenhum problema encontrado";
   return [blocks && plural4(blocks, "problema", "problemas"), reviews && plural4(reviews, "ponto para revisar", "pontos para revisar")].filter(Boolean).join(" \xB7 ");
 }
+function mutationLine(report) {
+  const m = report.mutation;
+  if (!m)
+    return null;
+  if (m.timedOut)
+    return "interrompida por tempo (n\xE3o conta no veredito)";
+  if (m.score === null)
+    return "nada para mutar nas linhas alteradas";
+  const total = m.killed + m.survived + m.noCoverage;
+  return `${m.killed} de ${plural4(total, "mutante pego", "mutantes pegos")} nas linhas alteradas (${m.score}%)`;
+}
 function planSummary(report) {
   if (report.reviewPlan.length === 0 && report.trivial.length === 0)
     return null;
@@ -71539,6 +71808,9 @@ function renderMarkdown(report, opts = {}) {
   const plan = planSummary(report);
   if (plan)
     head.push(`**Por onde revisar:** ${plan}`, "");
+  const mutation2 = mutationLine(report);
+  if (mutation2)
+    head.push(`**Muta\xE7\xE3o:** ${mutation2}`, "");
   for (const level2 of ["block", "review"]) {
     const list2 = report.findings.filter((f) => f.level === level2);
     if (list2.length === 0)
@@ -71654,7 +71926,11 @@ var RULES = {
   "deps/new-package": { maxLevel: "review", summary: "O pacote foi publicado h\xE1 pouco tempo." },
   "deps/low-downloads": { maxLevel: "review", summary: "O pacote tem poucos downloads por semana." },
   "deps/registry-unavailable": { maxLevel: "review", summary: "N\xE3o deu para consultar o pacote no registro." },
-  "risk/sensitive-zone": { maxLevel: "review", summary: "A mudan\xE7a toca uma zona sens\xEDvel (login, dinheiro, banco, segredos, CI)." }
+  "risk/sensitive-zone": { maxLevel: "review", summary: "A mudan\xE7a toca uma zona sens\xEDvel (login, dinheiro, banco, segredos, CI)." },
+  "mutation/survived": {
+    maxLevel: "block",
+    summary: "Bugs inseridos de prop\xF3sito nas linhas alteradas n\xE3o fazem nenhum teste falhar: os testes n\xE3o provam esta mudan\xE7a."
+  }
 };
 var RULES_URL = "https://github.com/EduardoxDev/Laudo#o-que-o-laudo-detecta";
 
@@ -71737,6 +72013,14 @@ var ReportSchema = external_exports.object({
   findings: list(FindingSchema),
   reviewPlan: list(external_exports.object({ file: str(1e3), kind: fileKind, added: count, removed: count, zones: list(str(100), 20) })),
   trivial: list(external_exports.object({ file: str(1e3), lines: count, why: external_exports.enum(["format", "rename", "imports", "moved", "generated"]) })),
+  mutation: external_exports.object({
+    killed: count,
+    survived: count,
+    noCoverage: count,
+    score: external_exports.number().min(0).max(100).nullable(),
+    timedOut: external_exports.boolean(),
+    runner: str(50)
+  }).optional(),
   notes: list(str(2e3), 200),
   analyzers: external_exports.record(str(100), external_exports.enum(["ok", "skipped", "error"])),
   meta: external_exports.object({
@@ -71867,7 +72151,7 @@ async function analyzeMode(deps2, comment) {
   let report;
   let config2;
   try {
-    ({ report, config: config2 } = await runLaudo({ cwd, base, ...deps2.laudo }));
+    ({ report, config: config2 } = await runLaudo({ cwd, base, mutate: io.bool("mutate", false), ...deps2.laudo }));
   } catch (err) {
     const msg = err.message;
     const hint = /merge-base|não existe|unknown revision|bad object/i.test(msg) ? ' Use actions/checkout com "fetch-depth: 0" para o hist\xF3rico da base estar dispon\xEDvel.' : "";
@@ -71901,7 +72185,7 @@ async function commentMode(deps2) {
   const reportPath = resolveIn(deps2.workspace, io.input("report-path", "laudo-report.json"));
   let envelope;
   try {
-    envelope = parseEnvelope((0, import_node_fs3.readFileSync)(reportPath, "utf8"));
+    envelope = parseEnvelope((0, import_node_fs5.readFileSync)(reportPath, "utf8"));
   } catch (err) {
     throw new Error(`n\xE3o deu para ler ${io.input("report-path", "laudo-report.json")}: ${err.message}`);
   }
@@ -71955,11 +72239,11 @@ function pullFromEvent(event) {
   return { number: pr.number, baseSha: pr.base.sha, headSha: pr.head.sha };
 }
 function resolveIn(root, path) {
-  return (0, import_node_path5.isAbsolute)(path) ? path : (0, import_node_path5.join)(root, path);
+  return (0, import_node_path8.isAbsolute)(path) ? path : (0, import_node_path8.join)(root, path);
 }
 function write(path, content) {
-  (0, import_node_fs3.mkdirSync)((0, import_node_path5.dirname)(path), { recursive: true });
-  (0, import_node_fs3.writeFileSync)(path, content);
+  (0, import_node_fs5.mkdirSync)((0, import_node_path8.dirname)(path), { recursive: true });
+  (0, import_node_fs5.writeFileSync)(path, content);
 }
 
 // packages/action/src/index.ts

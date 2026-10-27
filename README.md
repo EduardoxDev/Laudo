@@ -2,7 +2,7 @@
 
 Verifica se dá para confiar nas mudanças feitas por agentes de IA. Ele não escreve código nem dá opinião: junta evidências e dá um veredito (✔ aprovado, ● revisar, ✖ bloqueado).
 
-> Status: **fatia 4 de 6**. Já funcionam a integridade dos testes, a checagem de dependências novas, o mapa de risco e a GitHub Action, com comentário único no PR e SARIF. Veja a [especificação](docs/ESPECIFICACAO.md) e a [arquitetura](docs/ARQUITETURA.md).
+> Status: **fatia 5 de 6**. Já funcionam a integridade dos testes, a checagem de dependências novas, o mapa de risco, os testes de mutação nas linhas alteradas e a GitHub Action, com comentário único no PR e SARIF. Veja a [especificação](docs/ESPECIFICACAO.md) e a [arquitetura](docs/ARQUITETURA.md).
 
 ```
 ✖ BLOQUEADO  3 problemas · 1 ponto para revisar
@@ -69,6 +69,23 @@ Por onde revisar: 26 linhas em 5 arquivos · 10 linhas triviais escondidas (1 ar
 - **Mudanças triviais**, escondidas do plano: só formatação ou comentários, só renomeação de variáveis locais, só a ordem dos imports, arquivo só movido, lockfile. A comparação é pelo AST. Renomear algo **exportado**, trocar o nome de uma propriedade ou adicionar um import **não** conta como trivial.
 - **Ordem:** zonas sensíveis primeiro, depois código, CI, config, testes e o resto; dentro de cada grupo, o maior primeiro.
 
+### Testes de mutação nas linhas alteradas (`--mutate`)
+
+Um teste que passa não prova nada se ele também passaria com o código errado. Com `--mutate`, o Laudo usa o [Stryker](https://stryker-mutator.io) para inserir bugs de propósito **só nas linhas que o diff alterou**, como trocar `>=` por `>`, `&&` por `||` ou uma condição por `true`. Depois roda os testes. Cada bug que nenhum teste pega é um comportamento que não está garantido.
+
+```
+Mutação: 1 de 16 mutantes pegos nas linhas alteradas (6%)
+
+  ● Os testes não pegam bugs nas linhas alteradas de src/cart.js (15 mutantes escaparam)
+    · linha 6: trocar `code === 'METADE' && value >= 100` por `true` não quebra nenhum teste
+    · linha 7: nenhum teste passa por aqui
+```
+
+- Abaixo de `mutation.minScore` (50%), o Laudo pede revisão. Com 0% num PR que também mexeu nos testes, ele bloqueia (`mutation/survived`).
+- Usa o **Stryker do próprio projeto**, para que o executor de testes seja o mesmo. Instale `@stryker-mutator/core` e o runner do seu executor (`@stryker-mutator/vitest-runner`, `jest-runner` ou `mocha-runner`); sem runner, o Laudo usa `npm test`. O Stryker 10 pede Node 22; o 9 roda no Node 20.
+- Roda em modo incremental, com o cache em `.laudo/` (coloque no `.gitignore`). Se passar de `mutation.timeoutSeconds` (300 s), a mutação é interrompida e não conta no veredito.
+- Desligada por padrão. Ligue com `--mutate`, `"mutation": { "enabled": true }` na config ou `mutate: true` na Action. A mutação roda os testes do PR: na Action, use-a só onde o código do PR pode rodar.
+
 ## GitHub Action
 
 ```yaml
@@ -106,6 +123,7 @@ A cada push no PR, o Laudo **atualiza o mesmo comentário** em vez de criar outr
 | `fail-on` | `failOn` da config (`block`) | `block`, `review` ou `never` |
 | `base` | base do PR | ref ou sha da base, para rodar fora de PR |
 | `comment` | `true` | no modo `single`, publica o comentário |
+| `mutate` | `false` | roda os testes de mutação (precisa de `npm ci` antes) |
 | `comment-author` | `github-actions[bot]` | só comentários desse autor são atualizados (troque se usar outro token) |
 | `working-directory` | `.` | pasta do repositório |
 | `report-path` / `sarif-path` | `laudo-report.json` / `laudo.sarif` | onde gravar os arquivos |
@@ -124,6 +142,7 @@ Opções do `laudo check`:
 
 - `--base <ref>`: ref da base. O padrão é `origin/main`, `origin/master`, `main` ou `master`.
 - `--worktree`: inclui mudanças não commitadas.
+- `--mutate`: roda os testes de mutação nas linhas alteradas.
 - `--format markdown`: comentário pronto para PR. O que vem do diff é escapado, então não vira HTML, link nem menção a `@alguém`. O texto respeita o limite de tamanho do GitHub e termina com o marcador `<!-- laudo:report -->`.
 - `--format json`: o relatório completo, com `schemaVersion: 1`.
 - `--format sarif`: SARIF 2.1.0, para outras ferramentas de code scanning.

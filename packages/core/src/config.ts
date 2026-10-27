@@ -28,6 +28,16 @@ const ConfigSchema = z.object({
       sensitive: z.array(z.string()).default([]),
     })
     .prefault({}),
+  mutation: z
+    .object({
+      /** Desligada por padrão: roda os testes do projeto várias vezes e leva minutos. */
+      enabled: z.boolean().default(false),
+      /** Passou disso, a mutação é interrompida e não conta no veredito. */
+      timeoutSeconds: z.number().int().positive().default(300),
+      /** % mínima de mutantes pegos nas linhas alteradas; abaixo disso, pede revisão. */
+      minScore: z.number().min(0).max(100).default(50),
+    })
+    .prefault({}),
   ignore: z.array(z.string()).default([]),
 });
 
